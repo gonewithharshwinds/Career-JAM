@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career JAM by MehtaVerse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a202c; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #718096; }
+
+        .modal { display: none; transition: opacity 0.3s ease; }
+        .modal.flex { display: flex; }
+        .modal-content { transition: transform 0.3s ease; }
+        
+        .nav-link.active {
+            background-color: #4338ca;
+            color: #e0e7ff;
+        }
+
+        .status-tab.active {
+            border-color: #6366f1;
+            background-color: #4338ca;
+            color: #e0e7ff;
+        }
+        .job-row:hover { background-color: #1f2937; }
+        .job-row td { cursor: pointer; }
+        .editable-select {
+            background-color: #1f2937;
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+            padding: 4px 8px;
+            width: 100%;
+        }
+        #status-footer { transition: opacity 0.5s ease-in-out; }
+        .saved-confirm { transition: opacity 0.5s ease-in-out; }
+        
+        .analyze-match-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans antialiased">
+    <div id="app-container" class="flex flex-col h-screen">
+
+        <!-- Header -->
+        <header class="bg-gray-800 shadow-md">
+            <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-robot text-2xl text-indigo-400 mr-3"></i>
+                    <h1 class="text-xl font-bold">Career JAM by MehtaVerse</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button data-view="jobs-view" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white active">Jobs</button>
+                    <button data-view="profiles-view" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">Profiles</button>
+                    <button data-view="companies-view" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">Companies</button>
+                    <button data-view="people-view" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">People</button>
+                    <button data-view="logs-view" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">Logs</button>
+                    <button data-view="settings-view" class="nav-link px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"><i class="fas fa-cog"></i></button>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow p-4 overflow-auto">
+            <!-- Jobs View -->
+            <div id="jobs-view" class="view-content">
+                <!-- Jobs List View -->
+                <div id="jobs-list-container">
+                    <div class="flex justify-between items-center mb-4">
+                        <div id="status-tabs" class="flex space-x-2 border-b border-gray-700">
+                             <!-- Status tabs will be injected here -->
+                        </div>
+                        <button id="add-job-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center"><i class="fas fa-plus mr-2"></i>Add New Job</button>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg shadow overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Job Position</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Company</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Applied Profile</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Match %</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status (Dbl-click)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Saved</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jobs-table-body" class="divide-y divide-gray-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Job Detail View -->
+                <div id="job-detail-container" class="hidden">
+                    <button id="back-to-jobs-list" class="mb-4 text-sm text-indigo-400 hover:underline"><i class="fas fa-arrow-left mr-2"></i>Back to list</button>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-gray-800 p-6 rounded-lg">
+                            <h2 id="detail-job-title" class="text-2xl font-bold"></h2>
+                            <p id="detail-job-company" class="text-lg text-gray-400 mb-4"></p>
+                            <div id="detail-job-description" class="prose prose-invert max-w-none text-gray-300"></div>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-lg">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-semibold flex items-center"><i class="fas fa-robot text-indigo-400 mr-2"></i>AI Analysis</h3>
+                                <button id="reload-ai-btn" title="Reload Analysis" class="text-gray-400 hover:text-white"><i class="fas fa-sync-alt"></i></button>
+                            </div>
+                            <div id="ai-detail-panel" class="space-y-4">
+                                <!-- AI generated keywords will be injected here -->
+                            </div>
+                             <div id="ai-match-panel" class="mt-6">
+                                <!-- AI match details will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profiles View -->
+            <div id="profiles-view" class="view-content hidden">
+                <div class="flex justify-end mb-4">
+                    <button id="add-profile-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center"><i class="fas fa-plus mr-2"></i>Add New Profile</button>
+                </div>
+                <div class="bg-gray-800 rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Profile Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="profiles-table-body" class="divide-y divide-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Companies View -->
+            <div id="companies-view" class="view-content hidden">
+                 <div class="flex justify-end mb-4">
+                    <button id="add-company-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center"><i class="fas fa-plus mr-2"></i>Add New Company</button>
+                </div>
+                <div class="bg-gray-800 rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Industry</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Website</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companies-table-body" class="divide-y divide-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- People View -->
+            <div id="people-view" class="view-content hidden">
+                <div class="flex justify-end mb-4">
+                    <button id="add-person-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center"><i class="fas fa-plus mr-2"></i>Add New Contact</button>
+                </div>
+                 <div class="bg-gray-800 rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Job Title</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Company</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">LinkedIn</th>
+                            </tr>
+                        </thead>
+                        <tbody id="people-table-body" class="divide-y divide-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Logs View -->
+            <div id="logs-view" class="view-content hidden">
+                 <div class="bg-gray-800 rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/4">Timestamp</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/6">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body" class="divide-y divide-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settings-view" class="view-content hidden">
+                <div class="max-w-md mx-auto bg-gray-800 p-8 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-6">Settings</h2>
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold mb-2">Local LLM Configuration</h3>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="llm-api-url" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" placeholder="http://localhost:1234/v1/chat/completions">
+                            <button id="test-connection-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">Test</button>
+                        </div>
+                         <p class="text-xs text-gray-500 mt-2">Enter the full API URL for your local LLM and click Test.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-2">Database Management</h3>
+                        <p class="text-xs text-gray-400 bg-gray-900 p-2 rounded-md mb-4">
+                            <strong>Important:</strong> The auto-backup is stored in your browser's data. This can be cleared by your browser. For permanent safety, create regular manual backups.
+                        </p>
+                        <div class="flex space-x-4">
+                             <button id="backup-db-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"><i class="fas fa-download mr-2"></i>Backup DB</button>
+                            <label class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer flex items-center justify-center">
+                                <i class="fas fa-upload mr-2"></i>Restore DB
+                                <input type="file" id="restore-db-input" class="hidden" accept=".sqlite,.db">
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-700">
+                        <h3 class="text-lg font-semibold mb-2">About This Setup</h3>
+                        <p class="text-sm text-gray-400">
+                            This app leverages a powerful local AI setup for all analysis, running on:
+                        </p>
+                        <ul class="list-disc list-inside text-sm text-gray-400 mt-2 space-y-1">
+                            <li><strong>Model API:</strong> LM Studio (Gemma 12B Model)</li>
+                            <li><strong>Coordination & Logic:</strong> Gemini AI</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+        
+        <!-- Footer for Status Updates -->
+        <footer id="status-footer" class="bg-gray-800 text-center py-1 px-4 text-sm text-gray-400 opacity-0">
+            Status message goes here
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="add-job-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg transform scale-95">
+            <h3 class="text-xl font-semibold mb-4">Add a New Job Post</h3>
+            <form id="add-job-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="title" placeholder="Job Title" required class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="text" name="company_name" placeholder="Company Name" required class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="text" name="location" placeholder="Location" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="number" name="salary" placeholder="Max Salary (Optional)" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="text" name="url" placeholder="URL for Original Posting" class="md:col-span-2 bg-gray-700 border border-gray-600 p-2 rounded-md">
+                </div>
+                <div class="mt-4">
+                     <textarea name="description" placeholder="Job Description" rows="8" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold">Save Job</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+     <div id="add-company-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg transform scale-95">
+            <h3 class="text-xl font-semibold mb-4">Add a New Company</h3>
+            <form id="add-company-form">
+                 <div class="space-y-4">
+                    <input type="text" name="name" placeholder="Name" required class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
+                    <input type="text" name="industry" placeholder="Industry" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
+                    <input type="text" name="location" placeholder="Location" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
+                    <input type="url" name="website" placeholder="Website" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
+                    <input type="url" name="linkedin" placeholder="LinkedIn Profile" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold">Save Company</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+     <div id="add-person-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg transform scale-95">
+            <h3 class="text-xl font-semibold mb-4">Add a New Contact</h3>
+            <form id="add-person-form">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="first_name" placeholder="First Name" required class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="text" name="last_name" placeholder="Last Name" required class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="text" name="job_title" placeholder="Job Title" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="text" name="company_name" placeholder="Company Name" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="email" name="email" placeholder="Email" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="url" name="linkedin" placeholder="LinkedIn Profile" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold">Save Contact</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="add-profile-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg transform scale-95">
+            <h3 class="text-xl font-semibold mb-4">Add New Profile</h3>
+            <form id="add-profile-form">
+                <div class="space-y-4">
+                    <input type="text" name="name" placeholder="Profile Name (e.g., 'Senior Developer Resume')" required class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
+                    <textarea name="content" placeholder="Paste your full resume/CV text here..." rows="12" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50 hidden">
+        <div class="text-white text-xl flex items-center">
+            <i class="fas fa-spinner fa-spin mr-3"></i>
+            <span id="loading-text">Loading Database...</span>
+        </div>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    const JOB_STATUSES = ['Bookmarked', 'Applying', 'Applied', 'Interviewing', 'Negotiating', 'Accepted', 'Rejected'];
+    let db;
+    let currentJobViewStatus = 'Bookmarked';
+    let currentOpenJobId = null;
+    let logs = [];
+
+    // --- DOM Elements ---
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
+    const jobsListView = document.getElementById('jobs-list-container');
+    const jobDetailView = document.getElementById('job-detail-container');
+    const views = document.querySelectorAll('.view-content');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const statusFooter = document.getElementById('status-footer');
+    const jobsTableBody = document.getElementById('jobs-table-body');
+
+    // --- Utility Functions ---
+    function showLoading(text) {
+        loadingText.textContent = text;
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.classList.add('flex');
+    }
+
+    function hideLoading() {
+        loadingOverlay.classList.add('hidden');
+        loadingOverlay.classList.remove('flex');
+    }
+    
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.add('flex');
+        setTimeout(() => {
+            modal.querySelector('.modal-content').classList.remove('scale-95');
+            modal.style.opacity = '1';
+        }, 10);
+    }
+    
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if(!modal) return;
+        modal.querySelector('.modal-content').classList.add('scale-95');
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.classList.remove('flex');
+            modal.querySelector('form')?.reset();
+        }, 300);
+    }
+
+    function logEvent(type, message) {
+        const timestamp = new Date().toISOString();
+        logs.unshift({ timestamp, type, message });
+        if (logs.length > 200) logs.pop(); // Keep logs from getting too big
+        // Only render if the logs view is active to save performance
+        if (document.getElementById('logs-view').offsetParent !== null) {
+            renderLogs();
+        }
+    }
+    
+    let statusTimer;
+    function showStatus(message, type = 'info') {
+        clearTimeout(statusTimer);
+        const colors = { info: 'text-gray-400', success: 'text-green-400', error: 'text-red-400' };
+        statusFooter.textContent = message;
+        statusFooter.className = `bg-gray-800 text-center py-1 px-4 text-sm ${colors[type] || 'text-gray-400'} opacity-100`;
+        statusTimer = setTimeout(() => {
+            statusFooter.classList.remove('opacity-100');
+            statusFooter.classList.add('opacity-0');
+        }, 4000);
+    }
+
+    function switchView(viewId) {
+        views.forEach(view => view.classList.add('hidden'));
+        document.getElementById(viewId).classList.remove('hidden');
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset.view === viewId) {
+                link.classList.add('active');
+            }
+        });
+        if (viewId === 'logs-view') renderLogs();
+        if (viewId === 'profiles-view') renderProfiles();
+        logEvent('INFO', `Switched to view: ${viewId}`);
+    }
+
+    // --- App Initialization ---
+    async function init() {
+        showLoading('Initializing Database...');
+        logEvent('INFO', 'Application initialization started.');
+        try {
+            const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
+            const savedDb = localStorage.getItem('auto-backup-db');
+            if (savedDb) {
+                const Uints = new Uint8Array(savedDb.split(',').map(Number));
+                db = new SQL.Database(Uints);
+                logEvent('SUCCESS', 'Database loaded from auto-backup.');
+                showStatus('Database loaded from auto-backup.', 'success');
+            } else {
+                db = new SQL.Database();
+                logEvent('INFO', 'New database created.');
+                showStatus('New database created.');
+            }
+            
+            await createTables();
+            renderStatusTabs();
+            await Promise.all([
+                renderJobs(currentJobViewStatus),
+                renderCompanies(),
+                renderPeople(),
+                renderProfiles()
+            ]);
+            setupEventListeners();
+            loadSettings();
+            logEvent('SUCCESS', 'Application initialized successfully.');
+        } catch (err) {
+            console.error("Initialization failed:", err);
+            logEvent('ERROR', `Initialization failed: ${err.message}`);
+            showStatus('Initialization failed. Check logs.', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // --- Database Logic ---
+    async function createTables() {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY, title TEXT, company_name TEXT, location TEXT, salary REAL, url TEXT, description TEXT, status TEXT DEFAULT 'Bookmarked', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+            CREATE TABLE IF NOT EXISTS companies (id INTEGER PRIMARY KEY, name TEXT UNIQUE, industry TEXT, location TEXT, website TEXT, linkedin TEXT);
+            CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, job_title TEXT, company_name TEXT, email TEXT, linkedin TEXT);
+            CREATE TABLE IF NOT EXISTS profiles (id INTEGER PRIMARY KEY, name TEXT, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+        `);
+        
+        // Safely add new columns to the jobs table for existing users
+        const jobColsRes = db.exec("PRAGMA table_info(jobs)");
+        const jobCols = jobColsRes.length > 0 ? jobColsRes[0].values.map(col => col[1]) : [];
+        
+        if (!jobCols.includes('profile_id')) {
+            db.exec("ALTER TABLE jobs ADD COLUMN profile_id INTEGER REFERENCES profiles(id)");
+            logEvent('INFO', 'Upgraded database: Added profile_id column to jobs table.');
+        }
+        if (!jobCols.includes('match_percentage')) {
+            db.exec("ALTER TABLE jobs ADD COLUMN match_percentage INTEGER");
+            logEvent('INFO', 'Upgraded database: Added match_percentage column to jobs table.');
+        }
+    }
+
+    function executeQuery(sql, params = []) {
+        try {
+            const result = db.exec(sql, params);
+            if (!sql.trim().toUpperCase().startsWith("SELECT")) {
+                autoBackupDatabase();
+            }
+            return result;
+        } catch (e) {
+            console.error("DB Error:", e, "Query:", sql, "Params:", params);
+            logEvent('ERROR', `DB Error: ${e.message}`);
+            showStatus('Database error occurred.', 'error');
+            return null;
+        }
+    }
+    
+    // --- Rendering Logic ---
+    function renderLogs() {
+        const tableBody = document.getElementById('logs-table-body');
+        if(!tableBody) return;
+        tableBody.innerHTML = logs.map(log => {
+            const typeClass = {
+                'INFO': 'text-blue-400',
+                'SUCCESS': 'text-green-400',
+                'ERROR': 'text-red-400'
+            }[log.type] || 'text-gray-400';
+            return `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(log.timestamp).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap font-semibold ${typeClass}">${log.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${log.message}</td>
+                </tr>`;
+        }).join('');
+    }
+
+    function renderStatusTabs() {
+        const tabsContainer = document.getElementById('status-tabs');
+        tabsContainer.innerHTML = JOB_STATUSES.map(status => `
+            <button class="status-tab border-b-2 border-transparent px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition" data-status="${status}">${status}</button>
+        `).join('');
+        updateActiveTab();
+    }
+    
+    function updateActiveTab() {
+        document.querySelectorAll('.status-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.status === currentJobViewStatus);
+        });
+    }
+
+    async function renderJobs(status) {
+        const profilesRes = executeQuery("SELECT id, name FROM profiles ORDER BY name");
+        const profiles = profilesRes.length > 0 ? profilesRes[0].values : [];
+
+        const res = executeQuery(`
+            SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage
+            FROM jobs j
+            WHERE j.status = ? ORDER BY j.created_at DESC`, [status]);
+        const jobs = res.length > 0 ? res[0].values : [];
+        
+        if (jobs.length === 0) {
+            jobsTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">No jobs in this category.</td></tr>`;
+            return;
+        }
+        
+        jobsTableBody.innerHTML = jobs.map(row => {
+            const [id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage] = row;
+            const profileOptionsHtml = `<option value="">- Select Profile -</option>` + profiles.map(p => `<option value="${p[0]}" ${p[0] === profile_id ? 'selected' : ''}>${p[1]}</option>`).join('');
+
+            return `
+                <tr class="job-row" data-id="${id}">
+                    <td class="px-6 py-4 whitespace-nowrap" data-field="details">${title}</td>
+                    <td class="px-6 py-4 whitespace-nowrap" data-field="details">${company_name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <select data-job-id="${id}" class="profile-select editable-select text-sm">
+                            ${profileOptionsHtml}
+                        </select>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                           <span>${match_percentage === null || match_percentage === undefined ? 'N/A' : `${match_percentage}%`}</span>
+                           <button title="Run AI Match Analysis" class="analyze-match-btn text-indigo-400 hover:text-indigo-200" data-job-id="${id}" ${!profile_id ? 'disabled' : ''}>
+                               <i class="fas fa-robot"></i>
+                           </button>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap" data-field="status" data-current-status="${currentStatus}">${currentStatus}</td>
+                    <td class="px-6 py-4 whitespace-nowrap" data-field="details">${new Date(created_at).toLocaleDateString()}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function renderProfiles() {
+        const tableBody = document.getElementById('profiles-table-body');
+        const res = executeQuery("SELECT id, name, created_at FROM profiles ORDER BY created_at DESC");
+        const profiles = res.length > 0 ? res[0].values : [];
+        if (profiles.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-gray-500">No profiles created yet. Click 'Add New Profile' to start.</td></tr>`;
+            return;
+        }
+        tableBody.innerHTML = profiles.map(row => `
+            <tr class="hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap">${row[1]}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${new Date(row[2]).toLocaleDateString()}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <button class="delete-profile-btn text-red-400 hover:text-red-200" data-id="${row[0]}"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function renderCompanies() {
+        const tableBody = document.getElementById('companies-table-body');
+        const res = executeQuery("SELECT name, industry, location, website FROM companies ORDER BY name");
+        const companies = res.length > 0 ? res[0].values : [];
+        tableBody.innerHTML = companies.map(row => `
+            <tr class="hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap">${row[0]}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${row[1] || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${row[2] || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap"><a href="${row[3]}" target="_blank" class="text-indigo-400 hover:underline">${row[3] || ''}</a></td>
+            </tr>
+        `).join('');
+    }
+
+    async function renderPeople() {
+        const tableBody = document.getElementById('people-table-body');
+        const res = executeQuery("SELECT first_name, last_name, job_title, company_name, email, linkedin FROM people ORDER BY last_name");
+        const people = res.length > 0 ? res[0].values : [];
+        tableBody.innerHTML = people.map(row => `
+            <tr class="hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap">${row[0]} ${row[1]}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${row[2] || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${row[3] || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${row[4] || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap"><a href="${row[5]}" target="_blank" class="text-indigo-400 hover:underline">${row[5] || ''}</a></td>
+            </tr>
+        `).join('');
+    }
+
+    async function showJobDetail(jobId) {
+        currentOpenJobId = jobId; // Store the current job ID
+        const res = executeQuery("SELECT title, company_name, description, profile_id FROM jobs WHERE id = ?", [jobId]);
+        if (!res || res.length === 0) {
+            logEvent('ERROR', `Could not find job with ID ${jobId}`);
+            return;
+        }
+        
+        const [title, company, description, profile_id] = res[0].values[0];
+        
+        document.getElementById('detail-job-title').textContent = title;
+        document.getElementById('detail-job-company').textContent = company;
+        document.getElementById('detail-job-description').innerHTML = description ? description.replace(/\n/g, '<br>') : 'No description provided.';
+        
+        jobsListView.classList.add('hidden');
+        jobDetailView.classList.remove('hidden');
+
+        await analyzeAndDisplayKeywords();
+        if(profile_id) {
+             await analyzeJobMatch(jobId, profile_id, true); // Rerun match analysis for detail view
+        } else {
+            document.getElementById('ai-match-panel').innerHTML = `<p class="text-gray-500 text-sm">Select a profile from the main list to see match analysis.</p>`;
+        }
+    }
+    
+    // --- Event Handlers ---
+    function setupEventListeners() {
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => switchView(e.currentTarget.dataset.view));
+        });
+
+        document.getElementById('add-job-btn').addEventListener('click', () => openModal('add-job-modal'));
+        document.getElementById('add-profile-btn').addEventListener('click', () => openModal('add-profile-modal'));
+        document.getElementById('add-company-btn').addEventListener('click', () => openModal('add-company-modal'));
+        document.getElementById('add-person-btn').addEventListener('click', () => openModal('add-person-modal'));
+        document.querySelectorAll('.cancel-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal').id)));
+        
+        document.getElementById('status-tabs').addEventListener('click', e => {
+            if (e.target.classList.contains('status-tab')) {
+                currentJobViewStatus = e.target.dataset.status;
+                updateActiveTab();
+                renderJobs(currentJobViewStatus);
+            }
+        });
+        
+        // Use event delegation for dynamic elements in tables
+        jobsTableBody.addEventListener('click', e => {
+            const cell = e.target.closest('td');
+            if (cell && cell.dataset.field === 'details') {
+                const row = cell.closest('.job-row');
+                if(row) showJobDetail(row.dataset.id);
+            }
+            
+            const analyzeBtn = e.target.closest('.analyze-match-btn');
+            if (analyzeBtn) {
+                 const jobId = analyzeBtn.dataset.jobId;
+                 const profileSelect = analyzeBtn.closest('tr').querySelector('.profile-select');
+                 if(profileSelect.value){
+                     analyzeJobMatch(jobId, profileSelect.value);
+                 } else {
+                     showStatus("Please select a profile first.", "error");
+                 }
+            }
+        });
+        
+        jobsTableBody.addEventListener('change', async e => {
+            if (e.target.classList.contains('profile-select')) {
+                const jobId = e.target.dataset.jobId;
+                const profileId = e.target.value;
+                executeQuery("UPDATE jobs SET profile_id = ?, match_percentage = NULL WHERE id = ?", [profileId || null, jobId]); // Reset match % on profile change
+                logEvent('INFO', `Set profile to ID ${profileId || 'None'} for job ID ${jobId}.`);
+                // Enable/disable analyze button
+                const row = e.target.closest('tr');
+                const analyzeBtn = row.querySelector('.analyze-match-btn');
+                analyzeBtn.disabled = !profileId;
+                await renderJobs(currentJobViewStatus); // Re-render to update the row
+            }
+        });
+
+        jobsTableBody.addEventListener('dblclick', e => {
+            const cell = e.target.closest('td');
+            if (cell && cell.dataset.field === 'status') {
+                makeStatusEditable(cell);
+            }
+        });
+
+        document.getElementById('profiles-table-body').addEventListener('click', e => {
+            const deleteBtn = e.target.closest('.delete-profile-btn');
+            if (deleteBtn) {
+                 if (confirm('Are you sure you want to delete this profile? This cannot be undone.')) {
+                    const profileId = deleteBtn.dataset.id;
+                    executeQuery("DELETE FROM profiles WHERE id = ?", [profileId]);
+                    logEvent('SUCCESS', `Deleted profile ID ${profileId}`);
+                    showStatus('Profile deleted.', 'success');
+                    renderProfiles();
+                    renderJobs(currentJobViewStatus); // Refresh jobs view in case profile was in use
+                }
+            }
+        });
+        
+        document.getElementById('back-to-jobs-list').addEventListener('click', () => {
+             jobDetailView.classList.add('hidden');
+             jobsListView.classList.remove('hidden');
+             renderJobs(currentJobViewStatus); // Refresh job list on return
+        });
+
+        document.getElementById('reload-ai-btn').addEventListener('click', analyzeAndDisplayKeywords);
+        
+        document.getElementById('add-job-form').addEventListener('submit', handleAddJob);
+        document.getElementById('add-profile-form').addEventListener('submit', handleAddProfile);
+        document.getElementById('add-company-form').addEventListener('submit', handleAddCompany);
+        document.getElementById('add-person-form').addEventListener('submit', handleAddPerson);
+        
+        document.getElementById('llm-api-url').addEventListener('change', saveSettings);
+        document.getElementById('test-connection-btn').addEventListener('click', testLLMConnection);
+        document.getElementById('backup-db-btn').addEventListener('click', downloadBackup);
+        document.getElementById('restore-db-input').addEventListener('change', restoreDatabase);
+    }
+
+    async function handleAddJob(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        executeQuery("INSERT INTO jobs (title, company_name, location, salary, url, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)", [data.title, data.company_name, data.location, data.salary || null, data.url, data.description, 'Bookmarked']);
+        logEvent('SUCCESS', `Added new job: ${data.title}`);
+        showStatus('Job saved successfully!', 'success');
+        await renderJobs(currentJobViewStatus);
+        closeModal('add-job-modal');
+    }
+
+    async function handleAddProfile(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        if(!data.name || !data.content) {
+            showStatus("Profile Name and Content are required.", "error");
+            return;
+        }
+        executeQuery("INSERT INTO profiles (name, content) VALUES (?, ?)", [data.name, data.content]);
+        logEvent('SUCCESS', `Added new profile: ${data.name}`);
+        showStatus('Profile saved successfully!', 'success');
+        await renderProfiles();
+        closeModal('add-profile-modal');
+    }
+
+     async function handleAddCompany(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        executeQuery("INSERT OR IGNORE INTO companies (name, industry, location, website, linkedin) VALUES (?, ?, ?, ?, ?)", [data.name, data.industry, data.location, data.website, data.linkedin]);
+        logEvent('SUCCESS', `Added new company: ${data.name}`);
+        showStatus('Company saved successfully!', 'success');
+        await renderCompanies();
+        closeModal('add-company-modal');
+    }
+
+    async function handleAddPerson(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        executeQuery("INSERT INTO people (first_name, last_name, job_title, company_name, email, linkedin) VALUES (?, ?, ?, ?, ?, ?)", [data.first_name, data.last_name, data.job_title, data.company_name, data.email, data.linkedin]);
+        logEvent('SUCCESS', `Added new contact: ${data.first_name} ${data.last_name}`);
+        showStatus('Contact saved successfully!', 'success');
+        await renderPeople();
+        closeModal('add-person-modal');
+    }
+
+    function makeStatusEditable(cell) {
+        const currentStatus = cell.dataset.currentStatus;
+        cell.innerHTML = `
+            <select class="editable-select text-sm">
+                ${JOB_STATUSES.map(s => `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+        `;
+        const select = cell.querySelector('select');
+        select.focus();
+
+        const saveChange = () => {
+            const newStatus = select.value;
+            const jobId = cell.closest('.job-row').dataset.id;
+            executeQuery("UPDATE jobs SET status = ? WHERE id = ?", [newStatus, jobId]);
+            logEvent('INFO', `Updated status for job ID ${jobId} to ${newStatus}`);
+            showStatus('Status updated.', 'success');
+            renderJobs(currentJobViewStatus);
+        };
+
+        select.addEventListener('blur', saveChange);
+        select.addEventListener('change', saveChange);
+    }
+    
+    // --- Auto Backup & Persistence ---
+    function autoBackupDatabase() {
+        const data = db.export();
+        localStorage.setItem('auto-backup-db', data.join(','));
+    }
+    
+    function downloadBackup() {
+        const data = db.export();
+        const blob = new Blob([data], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `job_tracker_backup_${Date.now()}.sqlite`;
+        a.click();
+        URL.revokeObjectURL(url);
+        logEvent('SUCCESS', 'Manual database backup created.');
+        showStatus('Backup file downloaded.', 'success');
+    }
+
+    function saveSettings() {
+        const apiUrl = document.getElementById('llm-api-url').value;
+        localStorage.setItem('jobTrackerSettings', JSON.stringify({ llmApiUrl: apiUrl }));
+        logEvent('SUCCESS', 'Settings saved.');
+        showStatus('Settings saved!', 'success');
+    }
+
+    function loadSettings() {
+        const settings = JSON.parse(localStorage.getItem('jobTrackerSettings'));
+        if (settings && settings.llmApiUrl) {
+            document.getElementById('llm-api-url').value = settings.llmApiUrl;
+        }
+    }
+    
+    async function restoreDatabase(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (!confirm("Restoring will overwrite all current data. Are you sure you want to proceed?")) {
+            event.target.value = '';
+            return;
+        }
+
+        showLoading('Restoring Database...');
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
+                const Uints = new Uint8Array(e.target.result);
+                db = new SQL.Database(Uints);
+                autoBackupDatabase();
+                await init(); // Re-initialize the entire app state
+                logEvent('SUCCESS', `Database restored from file: ${file.name}`);
+                showStatus('Database restored successfully!', 'success');
+                switchView('jobs-view');
+            } catch (err) {
+                console.error("Restore failed:", err);
+                logEvent('ERROR', `Database restore failed: ${err.message}`);
+                showStatus('Database restore failed.', 'error');
+            } finally {
+                hideLoading();
+                event.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // --- AI Integration ---
+     async function testLLMConnection() {
+        const apiUrl = document.getElementById('llm-api-url')?.value;
+        if (!apiUrl) {
+            showStatus('Please enter an API Endpoint URL first.', 'error');
+            return;
+        }
+        const btn = document.getElementById('test-connection-btn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+        showStatus('Testing connection...', 'info');
+        logEvent('INFO', `Testing LLM connection to ${apiUrl}`);
+        
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                mode: 'cors', // Explicitly set CORS mode
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: "local-model",
+                    messages: [{ role: "user", content: "Say 'Hello'" }],
+                })
+            });
+
+            if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+
+            const result = await response.json();
+            if (result.choices && result.choices[0]) {
+                showStatus('Connection successful!', 'success');
+                logEvent('SUCCESS', 'LLM connection test was successful.');
+            } else {
+                throw new Error('Invalid response format from server.');
+            }
+
+        } catch (error) {
+            console.error("LLM Connection Test Error:", error);
+            showStatus(`Connection failed. Check logs.`, 'error');
+            logEvent('ERROR', `LLM connection test failed: ${error.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Test';
+        }
+    }
+
+    async function analyzeAndDisplayKeywords() {
+        if (!currentOpenJobId) return;
+
+        const res = executeQuery("SELECT description FROM jobs WHERE id = ?", [currentOpenJobId]);
+        if (!res || res.length === 0) return;
+        const description = res[0].values[0][0];
+
+        const panel = document.getElementById('ai-detail-panel');
+        if (!description || !description.trim()) {
+            panel.innerHTML = `<p class="text-gray-500 text-sm">No description to analyze.</p>`;
+            return;
+        }
+        const apiUrl = document.getElementById('llm-api-url')?.value;
+        if (!apiUrl) {
+            panel.innerHTML = `<p class="text-yellow-400 text-sm">Please set your LLM API Endpoint in Settings.</p>`;
+            return;
+        }
+        
+        panel.innerHTML = `<div class="text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Analyzing keywords...</div>`;
+        logEvent('INFO', `Starting AI keyword analysis for job ID ${currentOpenJobId}`);
+        showStatus('Sending job description to local AI...');
+
+        const prompt = `Based on the following job description, extract key skills and technologies. Categorize them under 'Requirements', 'Responsibilities', and 'Preferred'. Provide the output as a single, minified JSON object with no extra text or markdown. Example: {"Requirements":["Skill A","Skill B"],"Responsibilities":["Task C","Task D"],"Preferred":["Tool E"]}`;
+
+        try {
+            const content = await callLLM(prompt, description);
+            const parsedJson = JSON.parse(content);
+            renderKeywords(parsedJson);
+            logEvent('SUCCESS', `AI keyword analysis successful for job ID ${currentOpenJobId}`);
+            showStatus('AI keyword analysis complete!', 'success');
+
+        } catch (error) {
+            console.error("LLM API Error:", error);
+            panel.innerHTML = `<p class="text-red-400 text-sm">AI analysis failed. Check logs for details.</p>`;
+            logEvent('ERROR', `LLM API Error: ${error.message}`);
+            showStatus('AI keyword analysis failed.', 'error');
+        }
+    }
+
+    async function analyzeJobMatch(jobId, profileId, isDetailView = false) {
+        const jobRes = executeQuery("SELECT description FROM jobs WHERE id = ?", [jobId]);
+        const profileRes = executeQuery("SELECT content FROM profiles WHERE id = ?", [profileId]);
+        
+        if (!jobRes || jobRes.length === 0 || !profileRes || profileRes.length === 0) {
+            logEvent('ERROR', `Could not find job or profile for match analysis. JobID: ${jobId}, ProfileID: ${profileId}`);
+            return;
+        }
+        
+        const jobDescription = jobRes[0].values[0][0];
+        const profileContent = profileRes[0].values[0][0];
+
+        if (!jobDescription || !profileContent) {
+            showStatus("Job description or profile content is empty.", "error");
+            return;
+        }
+
+        const panel = document.getElementById('ai-match-panel');
+        if (isDetailView) {
+            panel.innerHTML = `<div class="text-center mt-4"><i class="fas fa-spinner fa-spin mr-2"></i>Analyzing profile match...</div>`;
+        } else {
+            showStatus(`Analyzing match for job...`, 'info');
+        }
+        logEvent('INFO', `Starting AI profile match for JobID: ${jobId} and ProfileID: ${profileId}`);
+        
+        const prompt = `Analyze the following resume against the job description. Provide a percentage match score (0-100) and a brief, one-sentence justification. Return a single, minified JSON object with keys "match_percentage" and "justification". Example: {"match_percentage":85,"justification":"Strong match in key skills, but lacks preferred experience."}`;
+        const combinedContent = `[RESUME]\n${profileContent}\n\n[JOB DESCRIPTION]\n${jobDescription}`;
+
+        try {
+            const content = await callLLM(prompt, combinedContent);
+            const parsedJson = JSON.parse(content);
+            const { match_percentage, justification } = parsedJson;
+
+            executeQuery("UPDATE jobs SET match_percentage = ? WHERE id = ?", [match_percentage, jobId]);
+            logEvent('SUCCESS', `AI match for JobID ${jobId} is ${match_percentage}%. Justification: ${justification}`);
+            showStatus(`AI Match: ${match_percentage}%`, 'success');
+
+            if (isDetailView) {
+                 panel.innerHTML = `
+                    <h4 class="font-semibold text-gray-400 text-sm mb-2">Profile Match Analysis</h4>
+                    <div class="text-3xl font-bold text-indigo-400">${match_percentage}%</div>
+                    <p class="text-sm text-gray-300 mt-2">${justification}</p>
+                 `;
+            } else {
+                await renderJobs(currentJobViewStatus);
+            }
+
+        } catch (error) {
+            console.error("LLM Match Error:", error);
+            if (isDetailView) panel.innerHTML = `<p class="text-red-400 text-sm">AI match analysis failed. Check logs.</p>`;
+            logEvent('ERROR', `LLM Match Error: ${error.message}`);
+            showStatus('AI match analysis failed.', 'error');
+        }
+    }
+
+    async function callLLM(prompt, content) {
+        const apiUrl = document.getElementById('llm-api-url')?.value;
+        if (!apiUrl) throw new Error("LLM API Endpoint not set in Settings.");
+
+        const bodyPayload = {
+            model: "local-model",
+            messages: [{ role: "user", content: `${prompt}\n\n---\n\n${content}` }],
+            stream: false
+        };
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyPayload)
+        });
+
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+        const result = await response.json();
+        return result.choices[0]?.message?.content;
+    }
+
+    function renderKeywords(data) {
+        const panel = document.getElementById('ai-detail-panel');
+        panel.innerHTML = '';
+        const categoryOrder = ['Requirements', 'Responsibilities', 'Preferred'];
+
+        for(const category of categoryOrder){
+            if(data[category] && data[category].length > 0) {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.innerHTML = `<h4 class="font-semibold text-gray-400 text-sm mb-2">${category}</h4>`;
+                const tagContainer = document.createElement('div');
+                tagContainer.className = 'flex flex-wrap gap-2';
+                
+                data[category].forEach(keyword => {
+                    const tag = document.createElement('span');
+                    tag.className = 'bg-indigo-900/50 text-indigo-300 text-xs font-medium px-2.5 py-1 rounded-full';
+                    tag.textContent = keyword;
+                    tagContainer.appendChild(tag);
+                });
+                categoryDiv.appendChild(tagContainer);
+                panel.appendChild(categoryDiv);
+            }
+        }
+        if (panel.innerHTML === '') {
+             panel.innerHTML = `<p class="text-gray-500 text-sm">The AI could not extract any specific keywords.</p>`;
+        }
+    }
+    
+    // --- Start the App ---
+    init();
+});
+</script>
+</body>
+</html>

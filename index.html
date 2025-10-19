@@ -227,39 +227,54 @@
 
             <!-- Settings View -->
             <div id="settings-view" class="view-content hidden">
-                <div class="max-w-md mx-auto bg-gray-800 p-8 rounded-lg shadow-lg">
-                    <h2 class="text-2xl font-bold mb-6">Settings</h2>
-                    <div class="mb-6">
-                        <h3 class="text-lg font-semibold mb-2">Local LLM Configuration</h3>
-                        <div class="flex items-center space-x-2">
-                            <input type="text" id="llm-api-url" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" placeholder="http://localhost:1234/v1/chat/completions">
-                            <button id="test-connection-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">Test</button>
+                <div class="max-w-4xl mx-auto space-y-8">
+                    <h2 class="text-3xl font-bold text-center">Settings & Information</h2>
+
+                    <!-- How to Run Local LLM -->
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-semibold mb-4 flex items-center"><i class="fas fa-rocket mr-3 text-indigo-400"></i>How to Run Local LLM</h3>
+                        <ol class="list-decimal list-inside space-y-3 text-gray-300">
+                            <li>Download & install <a href="https://lmstudio.ai/" target="_blank" class="text-indigo-400 hover:underline">LM Studio</a> for your OS.</li>
+                            <li>In LM Studio, search for and download a small, fast model. We recommend: <code class="bg-gray-900 px-2 py-1 rounded text-sm">gemma-2b-it-q4_0.gguf</code> (~2.5GB).</li>
+                            <li>Go to the <i class="fas fa-server"></i> Local Server tab, select your downloaded model, and click <strong class="font-semibold text-green-400">Start Server</strong>.</li>
+                            <li>Copy the server URL (usually <code class="bg-gray-900 px-2 py-1 rounded text-sm">http://localhost:1234/v1</code>) and paste it below.</li>
+                        </ol>
+                    </div>
+
+                    <!-- Configuration & Management -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                            <h3 class="text-xl font-semibold mb-4">LLM Configuration</h3>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" id="llm-api-url" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5" placeholder="http://localhost:1234/v1/chat/completions">
+                                <button id="test-connection-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">Test</button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">Make sure your local server is running before testing.</p>
                         </div>
-                         <p class="text-xs text-gray-500 mt-2">Enter the full API URL for your local LLM and click Test.</p>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-semibold mb-2">Database Management</h3>
-                        <p class="text-xs text-gray-400 bg-gray-900 p-2 rounded-md mb-4">
-                            <strong>Important:</strong> The auto-backup is stored in your browser's data. This can be cleared by your browser. For permanent safety, create regular manual backups.
-                        </p>
-                        <div class="flex space-x-4">
-                             <button id="backup-db-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"><i class="fas fa-download mr-2"></i>Backup DB</button>
-                            <label class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer flex items-center justify-center">
-                                <i class="fas fa-upload mr-2"></i>Restore DB
-                                <input type="file" id="restore-db-input" class="hidden" accept=".sqlite,.db">
-                            </label>
+                        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                            <h3 class="text-xl font-semibold mb-4">Database Management</h3>
+                             <p class="text-xs text-gray-400 bg-gray-900 p-2 rounded-md mb-4">
+                                <strong>Important:</strong> All data is stored locally in your browser. Create regular manual backups for safety.
+                            </p>
+                            <div class="flex space-x-4">
+                                <button id="backup-db-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"><i class="fas fa-download mr-2"></i>Backup DB</button>
+                                <label class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer flex items-center justify-center">
+                                    <i class="fas fa-upload mr-2"></i>Restore DB
+                                    <input type="file" id="restore-db-input" class="hidden" accept=".sqlite,.db">
+                                </label>
+                            </div>
                         </div>
                     </div>
-                    <div class="mt-8 pt-6 border-t border-gray-700">
-                        <h3 class="text-lg font-semibold mb-2">About This Setup</h3>
-                        <p class="text-sm text-gray-400">
-                            This app leverages a powerful local AI setup for all analysis, running on:
-                        </p>
-                        <ul class="list-disc list-inside text-sm text-gray-400 mt-2 space-y-1">
-                            <li><strong>Model API:</strong> LM Studio (Gemma 12B Model)</li>
-                            <li><strong>Coordination & Logic:</strong> Gemini AI</li>
-                        </ul>
+
+                    <!-- Credits -->
+                     <div class="bg-gray-800 p-6 rounded-lg shadow-lg text-center">
+                        <h3 class="text-xl font-semibold mb-4">Credits & Version</h3>
+                        <p class="text-gray-400">This application was brought to life by</p>
+                        <a href="https://mehtaharsh.xyz" target="_blank" class="text-2xl font-bold text-indigo-400 hover:underline my-2 inline-block">Harsh Mehta</a>
+                        <p class="text-gray-500 text-sm">Powered by Gemini AI & LM Studio</p>
+                        <p class="text-xs text-gray-600 mt-4">v0.1.0 (beta)</p>
                     </div>
+
                 </div>
             </div>
 
@@ -280,7 +295,7 @@
                     <input type="text" name="title" placeholder="Job Title" required class="bg-gray-700 border border-gray-600 p-2 rounded-md">
                     <input type="text" name="company_name" placeholder="Company Name" required class="bg-gray-700 border border-gray-600 p-2 rounded-md">
                     <input type="text" name="location" placeholder="Location" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
-                    <input type="number" name="salary" placeholder="Max Salary (e.g., 15 for ₹15 LPA)" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="number" step="0.1" name="salary" placeholder="Max Salary (e.g., 15 for ₹15 LPA)" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
                     <input type="text" name="url" placeholder="URL for Original Posting" class="md:col-span-2 bg-gray-700 border border-gray-600 p-2 rounded-md">
                 </div>
                 <div class="mt-4">

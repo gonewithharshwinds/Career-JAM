@@ -48,7 +48,9 @@ Unlock powerful features by connecting a local Large Language Model (LLM). This 
 
 #### Step 1: Install LM Studio
 
-Navigate to the official website: https:://lmstudio.ai
+Navigate to the official website: 
+```
+https:://lmstudio.ai
 ```
 Download and install the correct version for your operating system.
 

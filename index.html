@@ -40,7 +40,7 @@
         #status-footer { transition: opacity 0.5s ease-in-out; }
         .saved-confirm { transition: opacity 0.5s ease-in-out; }
         
-        .analyze-match-btn:disabled {
+        .analyze-match-btn:disabled, #generate-ai-btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
         }
@@ -107,7 +107,10 @@
                         <div class="bg-gray-800 p-6 rounded-lg">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-xl font-semibold flex items-center"><i class="fas fa-robot text-indigo-400 mr-2"></i>AI Analysis</h3>
-                                <button id="reload-ai-btn" title="Reload Analysis" class="text-gray-400 hover:text-white"><i class="fas fa-sync-alt"></i></button>
+                                <div class="flex items-center space-x-3">
+                                    <button id="save-ai-btn" title="Save Analysis" class="text-gray-400 hover:text-white hidden"><i class="fas fa-save"></i></button>
+                                    <button id="generate-ai-btn" title="Generate AI Analysis" class="text-gray-400 hover:text-white"><i class="fas fa-wand-magic-sparkles"></i></button>
+                                </div>
                             </div>
                             <div id="ai-detail-panel" class="space-y-4">
                                 <!-- AI generated keywords will be injected here -->
@@ -336,6 +339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentJobViewStatus = 'Bookmarked';
     let currentOpenJobId = null;
     let logs = [];
+    let unsavedAnalysisData = null; // Holds temporary AI analysis before saving
 
     // --- DOM Elements ---
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -383,7 +387,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const timestamp = new Date().toISOString();
         logs.unshift({ timestamp, type, message });
         if (logs.length > 200) logs.pop(); // Keep logs from getting too big
-        // Only render if the logs view is active to save performance
         if (document.getElementById('logs-view').offsetParent !== null) {
             renderLogs();
         }
@@ -462,17 +465,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             CREATE TABLE IF NOT EXISTS profiles (id INTEGER PRIMARY KEY, name TEXT, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
         `);
         
-        // Safely add new columns to the jobs table for existing users
         const jobColsRes = db.exec("PRAGMA table_info(jobs)");
         const jobCols = jobColsRes.length > 0 ? jobColsRes[0].values.map(col => col[1]) : [];
         
         if (!jobCols.includes('profile_id')) {
             db.exec("ALTER TABLE jobs ADD COLUMN profile_id INTEGER REFERENCES profiles(id)");
-            logEvent('INFO', 'Upgraded database: Added profile_id column to jobs table.');
+            logEvent('INFO', 'Upgraded database: Added profile_id column.');
         }
         if (!jobCols.includes('match_percentage')) {
             db.exec("ALTER TABLE jobs ADD COLUMN match_percentage INTEGER");
-            logEvent('INFO', 'Upgraded database: Added match_percentage column to jobs table.');
+            logEvent('INFO', 'Upgraded database: Added match_percentage column.');
+        }
+        if (!jobCols.includes('ai_keywords')) {
+            db.exec("ALTER TABLE jobs ADD COLUMN ai_keywords TEXT");
+            logEvent('INFO', 'Upgraded database: Added ai_keywords column.');
+        }
+        if (!jobCols.includes('match_justification')) {
+            db.exec("ALTER TABLE jobs ADD COLUMN match_justification TEXT");
+            logEvent('INFO', 'Upgraded database: Added match_justification column.');
         }
     }
 
@@ -496,11 +506,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tableBody = document.getElementById('logs-table-body');
         if(!tableBody) return;
         tableBody.innerHTML = logs.map(log => {
-            const typeClass = {
-                'INFO': 'text-blue-400',
-                'SUCCESS': 'text-green-400',
-                'ERROR': 'text-red-400'
-            }[log.type] || 'text-gray-400';
+            const typeClass = { 'INFO': 'text-blue-400', 'SUCCESS': 'text-green-400', 'ERROR': 'text-red-400' }[log.type] || 'text-gray-400';
             return `
                 <tr>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(log.timestamp).toLocaleString()}</td>
@@ -512,9 +518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderStatusTabs() {
         const tabsContainer = document.getElementById('status-tabs');
-        tabsContainer.innerHTML = JOB_STATUSES.map(status => `
-            <button class="status-tab border-b-2 border-transparent px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition" data-status="${status}">${status}</button>
-        `).join('');
+        tabsContainer.innerHTML = JOB_STATUSES.map(status => `<button class="status-tab border-b-2 border-transparent px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition" data-status="${status}">${status}</button>`).join('');
         updateActiveTab();
     }
     
@@ -527,11 +531,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function renderJobs(status) {
         const profilesRes = executeQuery("SELECT id, name FROM profiles ORDER BY name");
         const profiles = profilesRes.length > 0 ? profilesRes[0].values : [];
-
-        const res = executeQuery(`
-            SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage
-            FROM jobs j
-            WHERE j.status = ? ORDER BY j.created_at DESC`, [status]);
+        const res = executeQuery(`SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage FROM jobs j WHERE j.status = ? ORDER BY j.created_at DESC`, [status]);
         const jobs = res.length > 0 ? res[0].values : [];
         
         if (jobs.length === 0) {
@@ -562,8 +562,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap" data-field="status" data-current-status="${currentStatus}">${currentStatus}</td>
                     <td class="px-6 py-4 whitespace-nowrap" data-field="details">${new Date(created_at).toLocaleDateString()}</td>
-                </tr>
-            `;
+                </tr>`;
         }).join('');
     }
 
@@ -572,7 +571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const res = executeQuery("SELECT id, name, created_at FROM profiles ORDER BY created_at DESC");
         const profiles = res.length > 0 ? res[0].values : [];
         if (profiles.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-gray-500">No profiles created yet. Click 'Add New Profile' to start.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-gray-500">No profiles created yet.</td></tr>`;
             return;
         }
         tableBody.innerHTML = profiles.map(row => `
@@ -582,8 +581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="px-6 py-4 whitespace-nowrap">
                     <button class="delete-profile-btn text-red-400 hover:text-red-200" data-id="${row[0]}"><i class="fas fa-trash"></i></button>
                 </td>
-            </tr>
-        `).join('');
+            </tr>`).join('');
     }
 
     async function renderCompanies() {
@@ -596,8 +594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="px-6 py-4 whitespace-nowrap">${row[1] || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${row[2] || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap"><a href="${row[3]}" target="_blank" class="text-indigo-400 hover:underline">${row[3] || ''}</a></td>
-            </tr>
-        `).join('');
+            </tr>`).join('');
     }
 
     async function renderPeople() {
@@ -611,45 +608,55 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="px-6 py-4 whitespace-nowrap">${row[3] || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${row[4] || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap"><a href="${row[5]}" target="_blank" class="text-indigo-400 hover:underline">${row[5] || ''}</a></td>
-            </tr>
-        `).join('');
+            </tr>`).join('');
     }
 
     async function showJobDetail(jobId) {
-        currentOpenJobId = jobId; // Store the current job ID
-        const res = executeQuery("SELECT title, company_name, description, profile_id FROM jobs WHERE id = ?", [jobId]);
+        currentOpenJobId = jobId;
+        const res = executeQuery("SELECT title, company_name, description, profile_id, match_percentage, ai_keywords, match_justification FROM jobs WHERE id = ?", [jobId]);
         if (!res || res.length === 0) {
             logEvent('ERROR', `Could not find job with ID ${jobId}`);
             return;
         }
         
-        const [title, company, description, profile_id] = res[0].values[0];
+        const [title, company, description, profile_id, match_percentage, ai_keywords, match_justification] = res[0].values[0];
         
         document.getElementById('detail-job-title').textContent = title;
         document.getElementById('detail-job-company').textContent = company;
         document.getElementById('detail-job-description').innerHTML = description ? description.replace(/\n/g, '<br>') : 'No description provided.';
         
+        // Reset state for the detail view
+        document.getElementById('save-ai-btn').classList.add('hidden');
+        unsavedAnalysisData = null;
+
+        if (ai_keywords) {
+            try { renderKeywords(JSON.parse(ai_keywords)); } 
+            catch (e) {
+                logEvent('ERROR', `Failed to parse saved keywords for JobID ${jobId}`);
+                document.getElementById('ai-detail-panel').innerHTML = `<p class="text-red-400 text-sm">Could not load saved analysis.</p>`;
+            }
+        } else {
+             document.getElementById('ai-detail-panel').innerHTML = `<p class="text-gray-500 text-sm">Click the ✨ button to generate keyword analysis.</p>`;
+        }
+
+        if (match_percentage !== null && match_justification) {
+            renderMatchAnalysis({ match_percentage, justification: match_justification });
+        } else if (profile_id) {
+             document.getElementById('ai-match-panel').innerHTML = `<p class="text-gray-500 text-sm">Click the ✨ button to generate a profile match analysis.</p>`;
+        } else {
+            document.getElementById('ai-match-panel').innerHTML = `<p class="text-gray-500 text-sm">Select a profile from the main list to enable match analysis.</p>`;
+        }
+
         jobsListView.classList.add('hidden');
         jobDetailView.classList.remove('hidden');
-
-        await analyzeAndDisplayKeywords();
-        if(profile_id) {
-             await analyzeJobMatch(jobId, profile_id, true); // Rerun match analysis for detail view
-        } else {
-            document.getElementById('ai-match-panel').innerHTML = `<p class="text-gray-500 text-sm">Select a profile from the main list to see match analysis.</p>`;
-        }
     }
     
     // --- Event Handlers ---
     function setupEventListeners() {
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => switchView(e.currentTarget.dataset.view));
+        navLinks.forEach(link => link.addEventListener('click', (e) => switchView(e.currentTarget.dataset.view)));
+        ['add-job-btn', 'add-profile-btn', 'add-company-btn', 'add-person-btn'].forEach(id => {
+            document.getElementById(id).addEventListener('click', () => openModal(id.replace('-btn', '-modal')));
         });
-
-        document.getElementById('add-job-btn').addEventListener('click', () => openModal('add-job-modal'));
-        document.getElementById('add-profile-btn').addEventListener('click', () => openModal('add-profile-modal'));
-        document.getElementById('add-company-btn').addEventListener('click', () => openModal('add-company-modal'));
-        document.getElementById('add-person-btn').addEventListener('click', () => openModal('add-person-modal'));
         document.querySelectorAll('.cancel-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal').id)));
         
         document.getElementById('status-tabs').addEventListener('click', e => {
@@ -660,7 +667,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
-        // Use event delegation for dynamic elements in tables
         jobsTableBody.addEventListener('click', e => {
             const cell = e.target.closest('td');
             if (cell && cell.dataset.field === 'details') {
@@ -673,7 +679,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                  const jobId = analyzeBtn.dataset.jobId;
                  const profileSelect = analyzeBtn.closest('tr').querySelector('.profile-select');
                  if(profileSelect.value){
-                     analyzeJobMatch(jobId, profileSelect.value);
+                     handleAnalyzeMatchFromList(jobId, profileSelect.value);
                  } else {
                      showStatus("Please select a profile first.", "error");
                  }
@@ -684,44 +690,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (e.target.classList.contains('profile-select')) {
                 const jobId = e.target.dataset.jobId;
                 const profileId = e.target.value;
-                executeQuery("UPDATE jobs SET profile_id = ?, match_percentage = NULL WHERE id = ?", [profileId || null, jobId]); // Reset match % on profile change
+                executeQuery("UPDATE jobs SET profile_id = ?, match_percentage = NULL WHERE id = ?", [profileId || null, jobId]);
                 logEvent('INFO', `Set profile to ID ${profileId || 'None'} for job ID ${jobId}.`);
-                // Enable/disable analyze button
-                const row = e.target.closest('tr');
-                const analyzeBtn = row.querySelector('.analyze-match-btn');
+                const analyzeBtn = e.target.closest('tr').querySelector('.analyze-match-btn');
                 analyzeBtn.disabled = !profileId;
-                await renderJobs(currentJobViewStatus); // Re-render to update the row
+                await renderJobs(currentJobViewStatus);
             }
         });
 
         jobsTableBody.addEventListener('dblclick', e => {
             const cell = e.target.closest('td');
-            if (cell && cell.dataset.field === 'status') {
-                makeStatusEditable(cell);
-            }
+            if (cell && cell.dataset.field === 'status') makeStatusEditable(cell);
         });
 
         document.getElementById('profiles-table-body').addEventListener('click', e => {
             const deleteBtn = e.target.closest('.delete-profile-btn');
-            if (deleteBtn) {
-                 if (confirm('Are you sure you want to delete this profile? This cannot be undone.')) {
-                    const profileId = deleteBtn.dataset.id;
-                    executeQuery("DELETE FROM profiles WHERE id = ?", [profileId]);
-                    logEvent('SUCCESS', `Deleted profile ID ${profileId}`);
-                    showStatus('Profile deleted.', 'success');
-                    renderProfiles();
-                    renderJobs(currentJobViewStatus); // Refresh jobs view in case profile was in use
-                }
+            if (deleteBtn && confirm('Are you sure you want to delete this profile?')) {
+                const profileId = deleteBtn.dataset.id;
+                executeQuery("DELETE FROM profiles WHERE id = ?", [profileId]);
+                logEvent('SUCCESS', `Deleted profile ID ${profileId}`);
+                showStatus('Profile deleted.', 'success');
+                renderProfiles();
+                renderJobs(currentJobViewStatus);
             }
         });
         
         document.getElementById('back-to-jobs-list').addEventListener('click', () => {
              jobDetailView.classList.add('hidden');
              jobsListView.classList.remove('hidden');
-             renderJobs(currentJobViewStatus); // Refresh job list on return
+             renderJobs(currentJobViewStatus);
         });
 
-        document.getElementById('reload-ai-btn').addEventListener('click', analyzeAndDisplayKeywords);
+        document.getElementById('generate-ai-btn').addEventListener('click', generateAndDisplayFullAnalysis);
+        document.getElementById('save-ai-btn').addEventListener('click', handleSaveAnalysis);
         
         document.getElementById('add-job-form').addEventListener('submit', handleAddJob);
         document.getElementById('add-profile-form').addEventListener('submit', handleAddProfile);
@@ -736,8 +737,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function handleAddJob(e) {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+        const data = Object.fromEntries(new FormData(e.target).entries());
         executeQuery("INSERT INTO jobs (title, company_name, location, salary, url, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)", [data.title, data.company_name, data.location, data.salary || null, data.url, data.description, 'Bookmarked']);
         logEvent('SUCCESS', `Added new job: ${data.title}`);
         showStatus('Job saved successfully!', 'success');
@@ -747,51 +747,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function handleAddProfile(e) {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+        const data = Object.fromEntries(new FormData(e.target).entries());
         if(!data.name || !data.content) {
-            showStatus("Profile Name and Content are required.", "error");
-            return;
+            showStatus("Profile Name and Content are required.", "error"); return;
         }
         executeQuery("INSERT INTO profiles (name, content) VALUES (?, ?)", [data.name, data.content]);
         logEvent('SUCCESS', `Added new profile: ${data.name}`);
-        showStatus('Profile saved successfully!', 'success');
+        showStatus('Profile saved!', 'success');
         await renderProfiles();
         closeModal('add-profile-modal');
     }
 
      async function handleAddCompany(e) {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+        const data = Object.fromEntries(new FormData(e.target).entries());
         executeQuery("INSERT OR IGNORE INTO companies (name, industry, location, website, linkedin) VALUES (?, ?, ?, ?, ?)", [data.name, data.industry, data.location, data.website, data.linkedin]);
-        logEvent('SUCCESS', `Added new company: ${data.name}`);
-        showStatus('Company saved successfully!', 'success');
+        logEvent('SUCCESS', `Added company: ${data.name}`);
+        showStatus('Company saved!', 'success');
         await renderCompanies();
         closeModal('add-company-modal');
     }
 
     async function handleAddPerson(e) {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+        const data = Object.fromEntries(new FormData(e.target).entries());
         executeQuery("INSERT INTO people (first_name, last_name, job_title, company_name, email, linkedin) VALUES (?, ?, ?, ?, ?, ?)", [data.first_name, data.last_name, data.job_title, data.company_name, data.email, data.linkedin]);
-        logEvent('SUCCESS', `Added new contact: ${data.first_name} ${data.last_name}`);
-        showStatus('Contact saved successfully!', 'success');
+        logEvent('SUCCESS', `Added contact: ${data.first_name} ${data.last_name}`);
+        showStatus('Contact saved!', 'success');
         await renderPeople();
         closeModal('add-person-modal');
     }
 
     function makeStatusEditable(cell) {
         const currentStatus = cell.dataset.currentStatus;
-        cell.innerHTML = `
-            <select class="editable-select text-sm">
-                ${JOB_STATUSES.map(s => `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`).join('')}
-            </select>
-        `;
+        cell.innerHTML = `<select class="editable-select text-sm">${JOB_STATUSES.map(s => `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
         const select = cell.querySelector('select');
         select.focus();
-
         const saveChange = () => {
             const newStatus = select.value;
             const jobId = cell.closest('.job-row').dataset.id;
@@ -800,7 +791,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             showStatus('Status updated.', 'success');
             renderJobs(currentJobViewStatus);
         };
-
         select.addEventListener('blur', saveChange);
         select.addEventListener('change', saveChange);
     }
@@ -812,8 +802,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function downloadBackup() {
-        const data = db.export();
-        const blob = new Blob([data], { type: 'application/octet-stream' });
+        const blob = new Blob([db.export()], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -841,20 +830,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function restoreDatabase(event) {
         const file = event.target.files[0];
         if (!file) return;
-        if (!confirm("Restoring will overwrite all current data. Are you sure you want to proceed?")) {
-            event.target.value = '';
-            return;
+        if (!confirm("Restoring will overwrite all current data. Proceed?")) {
+            event.target.value = ''; return;
         }
-
         showLoading('Restoring Database...');
         const reader = new FileReader();
         reader.onload = async function(e) {
             try {
                 const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
-                const Uints = new Uint8Array(e.target.result);
-                db = new SQL.Database(Uints);
+                db = new SQL.Database(new Uint8Array(e.target.result));
                 autoBackupDatabase();
-                await init(); // Re-initialize the entire app state
+                await init();
                 logEvent('SUCCESS', `Database restored from file: ${file.name}`);
                 showStatus('Database restored successfully!', 'success');
                 switchView('jobs-view');
@@ -873,37 +859,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- AI Integration ---
      async function testLLMConnection() {
         const apiUrl = document.getElementById('llm-api-url')?.value;
-        if (!apiUrl) {
-            showStatus('Please enter an API Endpoint URL first.', 'error');
-            return;
-        }
+        if (!apiUrl) { showStatus('Please enter an API Endpoint URL first.', 'error'); return; }
         const btn = document.getElementById('test-connection-btn');
         btn.disabled = true;
         btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
         showStatus('Testing connection...', 'info');
         logEvent('INFO', `Testing LLM connection to ${apiUrl}`);
-        
         try {
             const response = await fetch(apiUrl, {
-                method: 'POST',
-                mode: 'cors', // Explicitly set CORS mode
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: "local-model",
-                    messages: [{ role: "user", content: "Say 'Hello'" }],
-                })
+                method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: "local-model", messages: [{ role: "user", content: "Say 'Hello'" }]})
             });
-
             if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
-
             const result = await response.json();
             if (result.choices && result.choices[0]) {
                 showStatus('Connection successful!', 'success');
                 logEvent('SUCCESS', 'LLM connection test was successful.');
-            } else {
-                throw new Error('Invalid response format from server.');
-            }
-
+            } else { throw new Error('Invalid response format from server.'); }
         } catch (error) {
             console.error("LLM Connection Test Error:", error);
             showStatus(`Connection failed. Check logs.`, 'error');
@@ -914,134 +886,117 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function analyzeAndDisplayKeywords() {
-        if (!currentOpenJobId) return;
-
-        const res = executeQuery("SELECT description FROM jobs WHERE id = ?", [currentOpenJobId]);
-        if (!res || res.length === 0) return;
-        const description = res[0].values[0][0];
-
-        const panel = document.getElementById('ai-detail-panel');
-        if (!description || !description.trim()) {
-            panel.innerHTML = `<p class="text-gray-500 text-sm">No description to analyze.</p>`;
-            return;
-        }
+    async function callLLM(prompt, content) {
         const apiUrl = document.getElementById('llm-api-url')?.value;
-        if (!apiUrl) {
-            panel.innerHTML = `<p class="text-yellow-400 text-sm">Please set your LLM API Endpoint in Settings.</p>`;
-            return;
+        if (!apiUrl) throw new Error("LLM API Endpoint not set in Settings.");
+        const response = await fetch(apiUrl, {
+            method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: "local-model", messages: [{ role: "user", content: `${prompt}\n\n---\n\n${content}` }], stream: false })
+        });
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+        const result = await response.json();
+        let llmContent = result.choices[0]?.message?.content;
+
+        // Clean the response to remove markdown code block fences
+        if (llmContent) {
+            llmContent = llmContent.replace(/```json/g, '').replace(/```/g, '').trim();
         }
-        
-        panel.innerHTML = `<div class="text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Analyzing keywords...</div>`;
-        logEvent('INFO', `Starting AI keyword analysis for job ID ${currentOpenJobId}`);
-        showStatus('Sending job description to local AI...');
 
-        const prompt = `Based on the following job description, extract key skills and technologies. Categorize them under 'Requirements', 'Responsibilities', and 'Preferred'. Provide the output as a single, minified JSON object with no extra text or markdown. Example: {"Requirements":["Skill A","Skill B"],"Responsibilities":["Task C","Task D"],"Preferred":["Tool E"]}`;
-
-        try {
-            const content = await callLLM(prompt, description);
-            const parsedJson = JSON.parse(content);
-            renderKeywords(parsedJson);
-            logEvent('SUCCESS', `AI keyword analysis successful for job ID ${currentOpenJobId}`);
-            showStatus('AI keyword analysis complete!', 'success');
-
-        } catch (error) {
-            console.error("LLM API Error:", error);
-            panel.innerHTML = `<p class="text-red-400 text-sm">AI analysis failed. Check logs for details.</p>`;
-            logEvent('ERROR', `LLM API Error: ${error.message}`);
-            showStatus('AI keyword analysis failed.', 'error');
-        }
+        return llmContent;
     }
 
-    async function analyzeJobMatch(jobId, profileId, isDetailView = false) {
-        const jobRes = executeQuery("SELECT description FROM jobs WHERE id = ?", [jobId]);
-        const profileRes = executeQuery("SELECT content FROM profiles WHERE id = ?", [profileId]);
-        
-        if (!jobRes || jobRes.length === 0 || !profileRes || profileRes.length === 0) {
-            logEvent('ERROR', `Could not find job or profile for match analysis. JobID: ${jobId}, ProfileID: ${profileId}`);
-            return;
-        }
-        
-        const jobDescription = jobRes[0].values[0][0];
-        const profileContent = profileRes[0].values[0][0];
+    async function runKeywordsAnalysis(description) {
+        const prompt = `Based on the following job description, extract key skills and technologies. Categorize them under 'Requirements', 'Responsibilities', and 'Preferred'. Provide the output as a single, minified JSON object with no extra text or markdown. Example: {"Requirements":["Skill A","Skill B"],"Responsibilities":["Task C","Task D"],"Preferred":["Tool E"]}`;
+        const content = await callLLM(prompt, description);
+        return JSON.parse(content);
+    }
 
-        if (!jobDescription || !profileContent) {
-            showStatus("Job description or profile content is empty.", "error");
-            return;
-        }
-
-        const panel = document.getElementById('ai-match-panel');
-        if (isDetailView) {
-            panel.innerHTML = `<div class="text-center mt-4"><i class="fas fa-spinner fa-spin mr-2"></i>Analyzing profile match...</div>`;
-        } else {
-            showStatus(`Analyzing match for job...`, 'info');
-        }
-        logEvent('INFO', `Starting AI profile match for JobID: ${jobId} and ProfileID: ${profileId}`);
-        
+    async function runMatchAnalysis(jobDescription, profileContent) {
         const prompt = `Analyze the following resume against the job description. Provide a percentage match score (0-100) and a brief, one-sentence justification. Return a single, minified JSON object with keys "match_percentage" and "justification". Example: {"match_percentage":85,"justification":"Strong match in key skills, but lacks preferred experience."}`;
         const combinedContent = `[RESUME]\n${profileContent}\n\n[JOB DESCRIPTION]\n${jobDescription}`;
+        const content = await callLLM(prompt, combinedContent);
+        return JSON.parse(content);
+    }
 
+    async function handleAnalyzeMatchFromList(jobId, profileId) {
+        showStatus(`Analyzing match for job...`, 'info');
+        logEvent('INFO', `Starting AI profile match for JobID: ${jobId} & ProfileID: ${profileId}`);
         try {
-            const content = await callLLM(prompt, combinedContent);
-            const parsedJson = JSON.parse(content);
-            const { match_percentage, justification } = parsedJson;
-
-            executeQuery("UPDATE jobs SET match_percentage = ? WHERE id = ?", [match_percentage, jobId]);
-            logEvent('SUCCESS', `AI match for JobID ${jobId} is ${match_percentage}%. Justification: ${justification}`);
+            const jobRes = executeQuery("SELECT description FROM jobs WHERE id = ?", [jobId]);
+            const profileRes = executeQuery("SELECT content FROM profiles WHERE id = ?", [profileId]);
+            const jobDescription = jobRes[0].values[0][0];
+            const profileContent = profileRes[0].values[0][0];
+            if (!jobDescription || !profileContent) { showStatus("Job/profile content is empty.", "error"); return; }
+            const { match_percentage, justification } = await runMatchAnalysis(jobDescription, profileContent);
+            executeQuery("UPDATE jobs SET match_percentage = ?, match_justification = ? WHERE id = ?", [match_percentage, justification, jobId]);
+            logEvent('SUCCESS', `AI match for JobID ${jobId} is ${match_percentage}%.`);
             showStatus(`AI Match: ${match_percentage}%`, 'success');
-
-            if (isDetailView) {
-                 panel.innerHTML = `
-                    <h4 class="font-semibold text-gray-400 text-sm mb-2">Profile Match Analysis</h4>
-                    <div class="text-3xl font-bold text-indigo-400">${match_percentage}%</div>
-                    <p class="text-sm text-gray-300 mt-2">${justification}</p>
-                 `;
-            } else {
-                await renderJobs(currentJobViewStatus);
-            }
-
+            await renderJobs(currentJobViewStatus);
         } catch (error) {
-            console.error("LLM Match Error:", error);
-            if (isDetailView) panel.innerHTML = `<p class="text-red-400 text-sm">AI match analysis failed. Check logs.</p>`;
-            logEvent('ERROR', `LLM Match Error: ${error.message}`);
+            console.error("LLM Match Error (List View):", error);
+            logEvent('ERROR', `LLM Match Error (List View): ${error.message}`);
             showStatus('AI match analysis failed.', 'error');
         }
     }
 
-    async function callLLM(prompt, content) {
-        const apiUrl = document.getElementById('llm-api-url')?.value;
-        if (!apiUrl) throw new Error("LLM API Endpoint not set in Settings.");
-
-        const bodyPayload = {
-            model: "local-model",
-            messages: [{ role: "user", content: `${prompt}\n\n---\n\n${content}` }],
-            stream: false
-        };
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyPayload)
-        });
-
-        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
-        const result = await response.json();
-        return result.choices[0]?.message?.content;
+    async function generateAndDisplayFullAnalysis() {
+        if (!currentOpenJobId) return;
+        const generateBtn = document.getElementById('generate-ai-btn');
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+        const [description, profile_id] = executeQuery("SELECT description, profile_id FROM jobs WHERE id = ?", [currentOpenJobId])[0].values[0];
+        const keywordsPanel = document.getElementById('ai-detail-panel');
+        const matchPanel = document.getElementById('ai-match-panel');
+        keywordsPanel.innerHTML = `<div class="text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Analyzing keywords...</div>`;
+        if (profile_id) { matchPanel.innerHTML = `<div class="text-center mt-4"><i class="fas fa-spinner fa-spin mr-2"></i>Analyzing match...</div>`; }
+        try {
+            const analysisPromises = [runKeywordsAnalysis(description)];
+            if (profile_id) {
+                const profileContent = executeQuery("SELECT content FROM profiles WHERE id = ?", [profile_id])[0].values[0][0];
+                analysisPromises.push(runMatchAnalysis(description, profileContent));
+            }
+            const [keywordsResult, matchResult] = await Promise.all(analysisPromises);
+            unsavedAnalysisData = { keywords: keywordsResult, match: matchResult || null };
+            renderKeywords(keywordsResult);
+            if (matchResult) renderMatchAnalysis(matchResult);
+            document.getElementById('save-ai-btn').classList.remove('hidden');
+            showStatus('AI analysis generated. Click Save to keep it.', 'success');
+            logEvent('SUCCESS', `Generated new AI analysis for JobID ${currentOpenJobId}`);
+        } catch(error) {
+            console.error("Full Analysis Error:", error);
+            logEvent('ERROR', `Full analysis failed: ${error.message}`);
+            showStatus('AI analysis failed. Check logs.', 'error');
+            keywordsPanel.innerHTML = `<p class="text-red-400 text-sm">Keyword analysis failed.</p>`;
+            if (profile_id) matchPanel.innerHTML = `<p class="text-red-400 text-sm">Match analysis failed.</p>`;
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = `<i class="fas fa-wand-magic-sparkles"></i>`;
+        }
+    }
+    
+    async function handleSaveAnalysis() {
+        if (!unsavedAnalysisData || !currentOpenJobId) { showStatus('No analysis data to save.', 'error'); return; }
+        const { keywords, match } = unsavedAnalysisData;
+        executeQuery("UPDATE jobs SET ai_keywords = ?, match_percentage = ?, match_justification = ? WHERE id = ?", 
+            [JSON.stringify(keywords), match ? match.match_percentage : null, match ? match.justification : null, currentOpenJobId]);
+        logEvent('SUCCESS', `Saved AI analysis for JobID ${currentOpenJobId}`);
+        showStatus('AI analysis saved successfully!', 'success');
+        document.getElementById('save-ai-btn').classList.add('hidden');
+        unsavedAnalysisData = null;
     }
 
     function renderKeywords(data) {
         const panel = document.getElementById('ai-detail-panel');
         panel.innerHTML = '';
         const categoryOrder = ['Requirements', 'Responsibilities', 'Preferred'];
-
+        let contentExists = false;
         for(const category of categoryOrder){
             if(data[category] && data[category].length > 0) {
+                contentExists = true;
                 const categoryDiv = document.createElement('div');
                 categoryDiv.innerHTML = `<h4 class="font-semibold text-gray-400 text-sm mb-2">${category}</h4>`;
                 const tagContainer = document.createElement('div');
                 tagContainer.className = 'flex flex-wrap gap-2';
-                
                 data[category].forEach(keyword => {
                     const tag = document.createElement('span');
                     tag.className = 'bg-indigo-900/50 text-indigo-300 text-xs font-medium px-2.5 py-1 rounded-full';
@@ -1052,9 +1007,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 panel.appendChild(categoryDiv);
             }
         }
-        if (panel.innerHTML === '') {
+        if (!contentExists) {
              panel.innerHTML = `<p class="text-gray-500 text-sm">The AI could not extract any specific keywords.</p>`;
         }
+    }
+    
+    function renderMatchAnalysis(data) {
+        const panel = document.getElementById('ai-match-panel');
+         panel.innerHTML = `
+            <h4 class="font-semibold text-gray-400 text-sm mb-2">Profile Match Analysis</h4>
+            <div class="text-3xl font-bold text-indigo-400">${data.match_percentage}%</div>
+            <p class="text-sm text-gray-300 mt-2">${data.justification}</p>
+         `;
     }
     
     // --- Start the App ---
@@ -1063,3 +1027,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 </script>
 </body>
 </html>
+
+

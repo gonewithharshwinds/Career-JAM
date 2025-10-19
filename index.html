@@ -88,6 +88,7 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Applied Profile</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Match %</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status (Dbl-click)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Saved</th>
                                 </tr>
                             </thead>
@@ -102,7 +103,9 @@
                         <div class="lg:col-span-2 bg-gray-800 p-6 rounded-lg">
                             <h2 id="detail-job-title" class="text-2xl font-bold"></h2>
                             <p id="detail-job-company" class="text-lg text-gray-400 mb-4"></p>
-                            <div id="detail-job-description" class="prose prose-invert max-w-none text-gray-300"></div>
+                            <div id="detail-job-description" class="prose prose-invert max-w-none text-gray-300 mb-4"></div>
+                            <h3 class="text-lg font-semibold border-t border-gray-700 pt-4 mt-4">Notes</h3>
+                            <p id="detail-job-notes" class="text-gray-300 whitespace-pre-wrap"></p>
                         </div>
                         <div class="bg-gray-800 p-6 rounded-lg">
                             <div class="flex justify-between items-center mb-4">
@@ -133,6 +136,7 @@
                         <thead class="bg-gray-700">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Profile Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -155,6 +159,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Industry</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Location</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Website</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes</th>
                             </tr>
                         </thead>
                         <tbody id="companies-table-body" class="divide-y divide-gray-700"></tbody>
@@ -176,6 +181,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Company</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">LinkedIn</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes</th>
                             </tr>
                         </thead>
                         <tbody id="people-table-body" class="divide-y divide-gray-700"></tbody>
@@ -260,6 +266,9 @@
                 <div class="mt-4">
                      <textarea name="description" placeholder="Job Description" rows="8" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
                 </div>
+                <div class="mt-4">
+                    <textarea name="notes" placeholder="Notes about this job..." rows="3" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
+                </div>
                 <div class="mt-6 flex justify-end space-x-3">
                     <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold">Save Job</button>
@@ -278,6 +287,7 @@
                     <input type="text" name="location" placeholder="Location" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
                     <input type="url" name="website" placeholder="Website" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
                     <input type="url" name="linkedin" placeholder="LinkedIn Profile" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
+                    <textarea name="notes" placeholder="Notes about this company..." rows="3" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
                 </div>
                 <div class="mt-6 flex justify-end space-x-3">
                     <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
@@ -299,6 +309,9 @@
                     <input type="email" name="email" placeholder="Email" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
                     <input type="url" name="linkedin" placeholder="LinkedIn Profile" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
                 </div>
+                <div class="mt-4">
+                     <textarea name="notes" placeholder="Notes about this contact..." rows="3" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
+                </div>
                 <div class="mt-6 flex justify-end space-x-3">
                     <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold">Save Contact</button>
@@ -314,6 +327,7 @@
                 <div class="space-y-4">
                     <input type="text" name="name" placeholder="Profile Name (e.g., 'Senior Developer Resume')" required class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full">
                     <textarea name="content" placeholder="Paste your full resume/CV text here..." rows="12" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
+                    <textarea name="notes" placeholder="Notes about this profile..." rows="3" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
                 </div>
                 <div class="mt-6 flex justify-end space-x-3">
                     <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
@@ -334,7 +348,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
-    const JOB_STATUSES = ['Bookmarked', 'Applying', 'Applied', 'Interviewing', 'Negotiating', 'Accepted', 'Rejected'];
+    const JOB_STATUSES = ['Bookmarked', 'Applying', 'Applied', 'Interviewing', 'Negotiating', 'Accepted', 'Spam', 'Rejected'];
     let db;
     let currentJobViewStatus = 'Bookmarked';
     let currentOpenJobId = null;
@@ -465,25 +479,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             CREATE TABLE IF NOT EXISTS profiles (id INTEGER PRIMARY KEY, name TEXT, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
         `);
         
-        const jobColsRes = db.exec("PRAGMA table_info(jobs)");
-        const jobCols = jobColsRes.length > 0 ? jobColsRes[0].values.map(col => col[1]) : [];
-        
-        if (!jobCols.includes('profile_id')) {
-            db.exec("ALTER TABLE jobs ADD COLUMN profile_id INTEGER REFERENCES profiles(id)");
-            logEvent('INFO', 'Upgraded database: Added profile_id column.');
-        }
-        if (!jobCols.includes('match_percentage')) {
-            db.exec("ALTER TABLE jobs ADD COLUMN match_percentage INTEGER");
-            logEvent('INFO', 'Upgraded database: Added match_percentage column.');
-        }
-        if (!jobCols.includes('ai_keywords')) {
-            db.exec("ALTER TABLE jobs ADD COLUMN ai_keywords TEXT");
-            logEvent('INFO', 'Upgraded database: Added ai_keywords column.');
-        }
-        if (!jobCols.includes('match_justification')) {
-            db.exec("ALTER TABLE jobs ADD COLUMN match_justification TEXT");
-            logEvent('INFO', 'Upgraded database: Added match_justification column.');
-        }
+        // Safely add new columns for existing users
+        const tables = ['jobs', 'companies', 'people', 'profiles'];
+        tables.forEach(table => {
+            const colsRes = db.exec(`PRAGMA table_info(${table})`);
+            const cols = colsRes.length > 0 ? colsRes[0].values.map(col => col[1]) : [];
+
+            if (!cols.includes('notes')) {
+                db.exec(`ALTER TABLE ${table} ADD COLUMN notes TEXT`);
+                logEvent('INFO', `Upgraded database: Added notes column to ${table} table.`);
+            }
+
+            // Specific columns for 'jobs' table
+            if (table === 'jobs') {
+                if (!cols.includes('profile_id')) {
+                    db.exec("ALTER TABLE jobs ADD COLUMN profile_id INTEGER REFERENCES profiles(id)");
+                    logEvent('INFO', 'Upgraded database: Added profile_id column.');
+                }
+                if (!cols.includes('match_percentage')) {
+                    db.exec("ALTER TABLE jobs ADD COLUMN match_percentage INTEGER");
+                    logEvent('INFO', 'Upgraded database: Added match_percentage column.');
+                }
+                if (!cols.includes('ai_keywords')) {
+                    db.exec("ALTER TABLE jobs ADD COLUMN ai_keywords TEXT");
+                    logEvent('INFO', 'Upgraded database: Added ai_keywords column.');
+                }
+                if (!cols.includes('match_justification')) {
+                    db.exec("ALTER TABLE jobs ADD COLUMN match_justification TEXT");
+                    logEvent('INFO', 'Upgraded database: Added match_justification column.');
+                }
+            }
+        });
     }
 
     function executeQuery(sql, params = []) {
@@ -531,16 +557,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function renderJobs(status) {
         const profilesRes = executeQuery("SELECT id, name FROM profiles ORDER BY name");
         const profiles = profilesRes.length > 0 ? profilesRes[0].values : [];
-        const res = executeQuery(`SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage FROM jobs j WHERE j.status = ? ORDER BY j.created_at DESC`, [status]);
+        const res = executeQuery(`SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage, j.notes FROM jobs j WHERE j.status = ? ORDER BY j.created_at DESC`, [status]);
         const jobs = res.length > 0 ? res[0].values : [];
         
         if (jobs.length === 0) {
-            jobsTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">No jobs in this category.</td></tr>`;
+            jobsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-500">No jobs in this category.</td></tr>`;
             return;
         }
         
         jobsTableBody.innerHTML = jobs.map(row => {
-            const [id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage] = row;
+            const [id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage, notes] = row;
             const profileOptionsHtml = `<option value="">- Select Profile -</option>` + profiles.map(p => `<option value="${p[0]}" ${p[0] === profile_id ? 'selected' : ''}>${p[1]}</option>`).join('');
 
             return `
@@ -561,6 +587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap" data-field="status" data-current-status="${currentStatus}">${currentStatus}</td>
+                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${notes || ''}">${notes || ''}</td>
                     <td class="px-6 py-4 whitespace-nowrap" data-field="details">${new Date(created_at).toLocaleDateString()}</td>
                 </tr>`;
         }).join('');
@@ -568,64 +595,73 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderProfiles() {
         const tableBody = document.getElementById('profiles-table-body');
-        const res = executeQuery("SELECT id, name, created_at FROM profiles ORDER BY created_at DESC");
+        const res = executeQuery("SELECT id, name, created_at, notes FROM profiles ORDER BY created_at DESC");
         const profiles = res.length > 0 ? res[0].values : [];
         if (profiles.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-gray-500">No profiles created yet.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-500">No profiles created yet.</td></tr>`;
             return;
         }
-        tableBody.innerHTML = profiles.map(row => `
+        tableBody.innerHTML = profiles.map(row => {
+            const [id, name, created_at, notes] = row;
+            return `
             <tr class="hover:bg-gray-700">
-                <td class="px-6 py-4 whitespace-nowrap">${row[1]}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${new Date(row[2]).toLocaleDateString()}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${name}</td>
+                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${notes || ''}">${notes || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${new Date(created_at).toLocaleDateString()}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <button class="delete-profile-btn text-red-400 hover:text-red-200" data-id="${row[0]}"><i class="fas fa-trash"></i></button>
+                    <button class="delete-profile-btn text-red-400 hover:text-red-200" data-id="${id}"><i class="fas fa-trash"></i></button>
                 </td>
-            </tr>`).join('');
+            </tr>`}).join('');
     }
 
     async function renderCompanies() {
         const tableBody = document.getElementById('companies-table-body');
-        const res = executeQuery("SELECT name, industry, location, website FROM companies ORDER BY name");
+        const res = executeQuery("SELECT name, industry, location, website, notes FROM companies ORDER BY name");
         const companies = res.length > 0 ? res[0].values : [];
-        tableBody.innerHTML = companies.map(row => `
+        tableBody.innerHTML = companies.map(row => {
+            const [name, industry, location, website, notes] = row;
+            return `
             <tr class="hover:bg-gray-700">
-                <td class="px-6 py-4 whitespace-nowrap">${row[0]}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${row[1] || ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${row[2] || ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap"><a href="${row[3]}" target="_blank" class="text-indigo-400 hover:underline">${row[3] || ''}</a></td>
-            </tr>`).join('');
+                <td class="px-6 py-4 whitespace-nowrap">${name}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${industry || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${location || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap"><a href="${website}" target="_blank" class="text-indigo-400 hover:underline">${website || ''}</a></td>
+                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${notes || ''}">${notes || ''}</td>
+            </tr>`}).join('');
     }
 
     async function renderPeople() {
         const tableBody = document.getElementById('people-table-body');
-        const res = executeQuery("SELECT first_name, last_name, job_title, company_name, email, linkedin FROM people ORDER BY last_name");
+        const res = executeQuery("SELECT first_name, last_name, job_title, company_name, email, linkedin, notes FROM people ORDER BY last_name");
         const people = res.length > 0 ? res[0].values : [];
-        tableBody.innerHTML = people.map(row => `
+        tableBody.innerHTML = people.map(row => {
+            const [first_name, last_name, job_title, company_name, email, linkedin, notes] = row;
+            return `
             <tr class="hover:bg-gray-700">
-                <td class="px-6 py-4 whitespace-nowrap">${row[0]} ${row[1]}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${row[2] || ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${row[3] || ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap">${row[4] || ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap"><a href="${row[5]}" target="_blank" class="text-indigo-400 hover:underline">${row[5] || ''}</a></td>
-            </tr>`).join('');
+                <td class="px-6 py-4 whitespace-nowrap">${first_name} ${last_name}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${job_title || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${company_name || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${email || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap"><a href="${linkedin}" target="_blank" class="text-indigo-400 hover:underline">${linkedin || ''}</a></td>
+                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${notes || ''}">${notes || ''}</td>
+            </tr>`}).join('');
     }
 
     async function showJobDetail(jobId) {
         currentOpenJobId = jobId;
-        const res = executeQuery("SELECT title, company_name, description, profile_id, match_percentage, ai_keywords, match_justification FROM jobs WHERE id = ?", [jobId]);
+        const res = executeQuery("SELECT title, company_name, description, notes, profile_id, match_percentage, ai_keywords, match_justification FROM jobs WHERE id = ?", [jobId]);
         if (!res || res.length === 0) {
             logEvent('ERROR', `Could not find job with ID ${jobId}`);
             return;
         }
         
-        const [title, company, description, profile_id, match_percentage, ai_keywords, match_justification] = res[0].values[0];
+        const [title, company, description, notes, profile_id, match_percentage, ai_keywords, match_justification] = res[0].values[0];
         
         document.getElementById('detail-job-title').textContent = title;
         document.getElementById('detail-job-company').textContent = company;
         document.getElementById('detail-job-description').innerHTML = description ? description.replace(/\n/g, '<br>') : 'No description provided.';
+        document.getElementById('detail-job-notes').textContent = notes || 'No notes for this job.';
         
-        // Reset state for the detail view
         document.getElementById('save-ai-btn').classList.add('hidden');
         unsavedAnalysisData = null;
 
@@ -738,7 +774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleAddJob(e) {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target).entries());
-        executeQuery("INSERT INTO jobs (title, company_name, location, salary, url, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)", [data.title, data.company_name, data.location, data.salary || null, data.url, data.description, 'Bookmarked']);
+        executeQuery("INSERT INTO jobs (title, company_name, location, salary, url, description, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [data.title, data.company_name, data.location, data.salary || null, data.url, data.description, 'Bookmarked', data.notes]);
         logEvent('SUCCESS', `Added new job: ${data.title}`);
         showStatus('Job saved successfully!', 'success');
         await renderJobs(currentJobViewStatus);
@@ -751,7 +787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!data.name || !data.content) {
             showStatus("Profile Name and Content are required.", "error"); return;
         }
-        executeQuery("INSERT INTO profiles (name, content) VALUES (?, ?)", [data.name, data.content]);
+        executeQuery("INSERT INTO profiles (name, content, notes) VALUES (?, ?, ?)", [data.name, data.content, data.notes]);
         logEvent('SUCCESS', `Added new profile: ${data.name}`);
         showStatus('Profile saved!', 'success');
         await renderProfiles();
@@ -761,7 +797,7 @@ document.addEventListener('DOMContentLoaded', async () => {
      async function handleAddCompany(e) {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target).entries());
-        executeQuery("INSERT OR IGNORE INTO companies (name, industry, location, website, linkedin) VALUES (?, ?, ?, ?, ?)", [data.name, data.industry, data.location, data.website, data.linkedin]);
+        executeQuery("INSERT OR IGNORE INTO companies (name, industry, location, website, linkedin, notes) VALUES (?, ?, ?, ?, ?, ?)", [data.name, data.industry, data.location, data.website, data.linkedin, data.notes]);
         logEvent('SUCCESS', `Added company: ${data.name}`);
         showStatus('Company saved!', 'success');
         await renderCompanies();
@@ -771,7 +807,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleAddPerson(e) {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target).entries());
-        executeQuery("INSERT INTO people (first_name, last_name, job_title, company_name, email, linkedin) VALUES (?, ?, ?, ?, ?, ?)", [data.first_name, data.last_name, data.job_title, data.company_name, data.email, data.linkedin]);
+        executeQuery("INSERT INTO people (first_name, last_name, job_title, company_name, email, linkedin, notes) VALUES (?, ?, ?, ?, ?, ?, ?)", [data.first_name, data.last_name, data.job_title, data.company_name, data.email, data.linkedin, data.notes]);
         logEvent('SUCCESS', `Added contact: ${data.first_name} ${data.last_name}`);
         showStatus('Contact saved!', 'success');
         await renderPeople();
@@ -1027,5 +1063,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 </script>
 </body>
 </html>
-
 

@@ -29,7 +29,15 @@
             color: #e0e7ff;
         }
         .job-row:hover { background-color: #1f2937; }
-        .job-row td { cursor: pointer; }
+        .job-row td[data-field="details"] { cursor: pointer; }
+        td[data-field="notes"] {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        td[data-field="notes"]:hover {
+            background-color: #2d3748;
+        }
+        
         .editable-select {
             background-color: #1f2937;
             border: 1px solid #4a5568;
@@ -88,7 +96,7 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Applied Profile</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Match %</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status (Dbl-click)</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes (Click to Edit)</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Saved</th>
                                 </tr>
                             </thead>
@@ -136,7 +144,7 @@
                         <thead class="bg-gray-700">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Profile Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes (Click to Edit)</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -159,7 +167,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Industry</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Location</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Website</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes (Click to Edit)</th>
                             </tr>
                         </thead>
                         <tbody id="companies-table-body" class="divide-y divide-gray-700"></tbody>
@@ -181,7 +189,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Company</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">LinkedIn</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Notes (Click to Edit)</th>
                             </tr>
                         </thead>
                         <tbody id="people-table-body" class="divide-y divide-gray-700"></tbody>
@@ -332,6 +340,21 @@
                 <div class="mt-6 flex justify-end space-x-3">
                     <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-notes-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg transform scale-95">
+            <h3 class="text-xl font-semibold mb-4">Edit Notes</h3>
+            <form id="edit-notes-form">
+                <input type="hidden" name="itemId">
+                <input type="hidden" name="itemType">
+                <textarea name="notes" id="notes-editor" rows="8" class="bg-gray-700 border border-gray-600 p-2 rounded-md w-full"></textarea>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md font-semibold">Save Notes</button>
                 </div>
             </form>
         </div>
@@ -587,7 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap" data-field="status" data-current-status="${currentStatus}">${currentStatus}</td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${notes || ''}">${notes || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="jobs" title="${notes || 'Click to add notes'}">${notes || ''}</td>
                     <td class="px-6 py-4 whitespace-nowrap" data-field="details">${new Date(created_at).toLocaleDateString()}</td>
                 </tr>`;
         }).join('');
@@ -606,7 +629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `
             <tr class="hover:bg-gray-700">
                 <td class="px-6 py-4 whitespace-nowrap">${name}</td>
-                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${notes || ''}">${notes || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="profiles" title="${notes || 'Click to add notes'}">${notes || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${new Date(created_at).toLocaleDateString()}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <button class="delete-profile-btn text-red-400 hover:text-red-200" data-id="${id}"><i class="fas fa-trash"></i></button>
@@ -616,26 +639,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderCompanies() {
         const tableBody = document.getElementById('companies-table-body');
-        const res = executeQuery("SELECT name, industry, location, website, notes FROM companies ORDER BY name");
+        const res = executeQuery("SELECT id, name, industry, location, website, notes FROM companies ORDER BY name");
         const companies = res.length > 0 ? res[0].values : [];
         tableBody.innerHTML = companies.map(row => {
-            const [name, industry, location, website, notes] = row;
+            const [id, name, industry, location, website, notes] = row;
             return `
             <tr class="hover:bg-gray-700">
                 <td class="px-6 py-4 whitespace-nowrap">${name}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${industry || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${location || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap"><a href="${website}" target="_blank" class="text-indigo-400 hover:underline">${website || ''}</a></td>
-                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${notes || ''}">${notes || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="companies" title="${notes || 'Click to add notes'}">${notes || ''}</td>
             </tr>`}).join('');
     }
 
     async function renderPeople() {
         const tableBody = document.getElementById('people-table-body');
-        const res = executeQuery("SELECT first_name, last_name, job_title, company_name, email, linkedin, notes FROM people ORDER BY last_name");
+        const res = executeQuery("SELECT id, first_name, last_name, job_title, company_name, email, linkedin, notes FROM people ORDER BY last_name");
         const people = res.length > 0 ? res[0].values : [];
         tableBody.innerHTML = people.map(row => {
-            const [first_name, last_name, job_title, company_name, email, linkedin, notes] = row;
+            const [id, first_name, last_name, job_title, company_name, email, linkedin, notes] = row;
             return `
             <tr class="hover:bg-gray-700">
                 <td class="px-6 py-4 whitespace-nowrap">${first_name} ${last_name}</td>
@@ -643,7 +666,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="px-6 py-4 whitespace-nowrap">${company_name || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap">${email || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap"><a href="${linkedin}" target="_blank" class="text-indigo-400 hover:underline">${linkedin || ''}</a></td>
-                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${notes || ''}">${notes || ''}</td>
+                <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="people" title="${notes || 'Click to add notes'}">${notes || ''}</td>
             </tr>`}).join('');
     }
 
@@ -764,11 +787,66 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('add-profile-form').addEventListener('submit', handleAddProfile);
         document.getElementById('add-company-form').addEventListener('submit', handleAddCompany);
         document.getElementById('add-person-form').addEventListener('submit', handleAddPerson);
+        document.getElementById('edit-notes-form').addEventListener('submit', handleEditNotes);
         
+        document.querySelector('main').addEventListener('click', e => {
+            const notesCell = e.target.closest('td[data-field="notes"]');
+            if (notesCell) {
+                openNotesEditor(notesCell);
+            }
+        });
+
         document.getElementById('llm-api-url').addEventListener('change', saveSettings);
         document.getElementById('test-connection-btn').addEventListener('click', testLLMConnection);
         document.getElementById('backup-db-btn').addEventListener('click', downloadBackup);
         document.getElementById('restore-db-input').addEventListener('change', restoreDatabase);
+    }
+    
+    function openNotesEditor(cell) {
+        const id = cell.dataset.id;
+        const type = cell.dataset.type;
+        const currentNotes = cell.title.replace('Click to add notes', ''); // Use title to get full notes
+
+        const form = document.getElementById('edit-notes-form');
+        form.elements.itemId.value = id;
+        form.elements.itemType.value = type;
+        form.elements.notes.value = currentNotes;
+        
+        openModal('edit-notes-modal');
+    }
+
+    async function handleEditNotes(e) {
+        e.preventDefault();
+        const form = e.target;
+        const id = form.elements.itemId.value;
+        const type = form.elements.itemType.value;
+        const notes = form.elements.notes.value;
+
+        if (!id || !type) {
+            showStatus("Error saving notes: missing data.", "error");
+            return;
+        }
+
+        executeQuery(`UPDATE ${type} SET notes = ? WHERE id = ?`, [notes, id]);
+        logEvent('SUCCESS', `Updated notes for ${type} ID ${id}.`);
+        showStatus('Notes updated successfully!', 'success');
+
+        closeModal('edit-notes-modal');
+
+        switch (type) {
+            case 'jobs':
+                await renderJobs(currentJobViewStatus);
+                break;
+            case 'profiles':
+                await renderProfiles();
+                break;
+            case 'companies':
+                await renderCompanies();
+                break;
+            case 'people':
+                await renderPeople();
+                break;
+        }
     }
 
     async function handleAddJob(e) {

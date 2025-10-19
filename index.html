@@ -82,8 +82,19 @@
                 <!-- Jobs List View -->
                 <div id="jobs-list-container">
                     <div class="flex justify-between items-center mb-4">
-                        <div id="status-tabs" class="flex space-x-2 border-b border-gray-700">
-                             <!-- Status tabs will be injected here -->
+                        <div class="flex items-center space-x-4">
+                           <div id="status-tabs" class="flex space-x-2 border-b border-gray-700">
+                                 <!-- Status tabs will be injected here -->
+                            </div>
+                            <div class="pl-4">
+                                <select id="sort-jobs-select" class="editable-select text-sm">
+                                    <option value="created_at DESC">Sort by: Date (Newest)</option>
+                                    <option value="salary DESC">Sort by: Salary (High)</option>
+                                    <option value="match_percentage DESC">Sort by: Match % (High)</option>
+                                    <option value="title ASC">Sort by: Position (A-Z)</option>
+                                    <option value="company_name ASC">Sort by: Company (A-Z)</option>
+                                </select>
+                            </div>
                         </div>
                         <button id="add-job-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center"><i class="fas fa-plus mr-2"></i>Add New Job</button>
                     </div>
@@ -93,6 +104,7 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Job Position</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Company</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Salary (LPA)</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Applied Profile</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Match %</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status (Dbl-click)</th>
@@ -268,7 +280,7 @@
                     <input type="text" name="title" placeholder="Job Title" required class="bg-gray-700 border border-gray-600 p-2 rounded-md">
                     <input type="text" name="company_name" placeholder="Company Name" required class="bg-gray-700 border border-gray-600 p-2 rounded-md">
                     <input type="text" name="location" placeholder="Location" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
-                    <input type="number" name="salary" placeholder="Max Salary (Optional)" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
+                    <input type="number" name="salary" placeholder="Max Salary (e.g., 15 for ₹15 LPA)" class="bg-gray-700 border border-gray-600 p-2 rounded-md">
                     <input type="text" name="url" placeholder="URL for Original Posting" class="md:col-span-2 bg-gray-700 border border-gray-600 p-2 rounded-md">
                 </div>
                 <div class="mt-4">
@@ -374,6 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const JOB_STATUSES = ['Bookmarked', 'Applying', 'Applied', 'Interviewing', 'Negotiating', 'Accepted', 'Spam', 'Rejected'];
     let db;
     let currentJobViewStatus = 'Bookmarked';
+    let currentSortOrder = 'created_at DESC';
     let currentOpenJobId = null;
     let logs = [];
     let unsavedAnalysisData = null; // Holds temporary AI analysis before saving
@@ -580,22 +593,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function renderJobs(status) {
         const profilesRes = executeQuery("SELECT id, name FROM profiles ORDER BY name");
         const profiles = profilesRes.length > 0 ? profilesRes[0].values : [];
-        const res = executeQuery(`SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage, j.notes FROM jobs j WHERE j.status = ? ORDER BY j.created_at DESC`, [status]);
+        const res = executeQuery(`SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage, j.notes, j.salary FROM jobs j WHERE j.status = ? ORDER BY ${currentSortOrder}`, [status]);
         const jobs = res.length > 0 ? res[0].values : [];
         
         if (jobs.length === 0) {
-            jobsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-500">No jobs in this category.</td></tr>`;
+            jobsTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-500">No jobs in this category.</td></tr>`;
             return;
         }
         
         jobsTableBody.innerHTML = jobs.map(row => {
-            const [id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage, notes] = row;
+            const [id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage, notes, salary] = row;
             const profileOptionsHtml = `<option value="">- Select Profile -</option>` + profiles.map(p => `<option value="${p[0]}" ${p[0] === profile_id ? 'selected' : ''}>${p[1]}</option>`).join('');
 
             return `
                 <tr class="job-row" data-id="${id}">
                     <td class="px-6 py-4 whitespace-nowrap" data-field="details">${title}</td>
                     <td class="px-6 py-4 whitespace-nowrap" data-field="details">${company_name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${salary ? `₹${salary} LPA` : 'N/A'}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <select data-job-id="${id}" class="profile-select editable-select text-sm">
                             ${profileOptionsHtml}
@@ -726,6 +740,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
+        document.getElementById('sort-jobs-select').addEventListener('change', e => {
+            currentSortOrder = e.target.value;
+            logEvent('INFO', `Changed job sort order to: ${e.target.options[e.target.selectedIndex].text}`);
+            renderJobs(currentJobViewStatus);
+        });
+
         jobsTableBody.addEventListener('click', e => {
             const cell = e.target.closest('td');
             if (cell && cell.dataset.field === 'details') {

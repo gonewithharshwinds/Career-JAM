@@ -1,0 +1,426 @@
+/* --- THEME DEFINITIONS --- */
+
+/* 1. Humanist Theme (Original) */
+.theme-humanist {
+    --background: #fdf8f5;
+    --foreground: #663b49;
+    --card: #ffffff;
+    --card-foreground: #663b49;
+    --popover: #ffffff;
+    --popover-foreground: #663b49;
+    --primary: #8a4933;
+    --primary-foreground: #ffffff;
+    --secondary: #dba08b;
+    --secondary-foreground: #663b49;
+    --muted: #f5ebe6;
+    --muted-foreground: #b45f46;
+    --accent: #c77961;
+    --accent-foreground: #ffffff;
+    --destructive: #ff4b4b;
+    --destructive-foreground: #ffffff;
+    --border: #e0d4cd;
+    --input: #f5ebe6;
+    --ring: #b45f46;
+    --radius: 0.5rem;
+    --font-sans: "Manrope", sans-serif;
+    --font-serif: "Playfair Display", serif;
+    --font-mono: "Fira Code", monospace;
+    --shadow-sm: 0 0.25rem 0.5rem 0 hsl(340.4651 26.7081% 31.5686% / 0.10), 0 1px 2px -1px hsl(340.4651 26.7081% 31.5686% / 0.10);
+    --shadow-md: 0 0.25rem 0.5rem 0 hsl(340.4651 26.7081% 31.5686% / 0.10), 0 2px 4px -1px hsl(340.4651 26.7081% 31.5686% / 0.10);
+    --shadow-lg: 0 0.25rem 0.5rem 0 hsl(340.4651 26.7081% 31.5686% / 0.10), 0 4px 6px -1px hsl(340.4651 26.7081% 31.5686% / 0.10);
+    --shadow-xl: 0 0.25rem 0.5rem 0 hsl(340.4651 26.7081% 31.5686% / 0.10), 0 8px 10px -1px hsl(340.4651 26.7081% 31.5686% / 0.10);
+    --shadow-2xl: 0 0.25rem 0.5rem 0 hsl(340.4651 26.7081% 31.5686% / 0.25);
+}
+
+.dark .theme-humanist {
+    --background: #2e1c24;
+    --foreground: #dba08b;
+    --card: #3a242c;
+    --card-foreground: #dba08b;
+    --popover: #3a242c;
+    --popover-foreground: #dba08b;
+    --primary: #b45f46;
+    --primary-foreground: #ffffff;
+    --secondary: #663b49;
+    --secondary-foreground: #dba08b;
+    --muted: #452e36;
+    --muted-foreground: #c77961;
+    --accent: #8a4933;
+    --accent-foreground: #ffffff;
+    --destructive: #ff6b6b;
+    --destructive-foreground: #ffffff;
+    --border: #663b49;
+    --input: #2e1c24;
+    --ring: #c77961;
+    --shadow-sm: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.30), 0 1px 2px -1px hsl(0 0% 0% / 0.30);
+    --shadow-md: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.30), 0 2px 4px -1px hsl(0 0% 0% / 0.30);
+    --shadow-lg: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.30), 0 4px 6px -1px hsl(0 0% 0% / 0.30);
+    --shadow-xl: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.30), 0 8px 10px -1px hsl(0 0% 0% / 0.30);
+    --shadow-2xl: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.75);
+}
+
+/* 2. NEW: Corporate Blue Theme */
+.theme-corporate {
+    --background: #f4f7fa;
+    --foreground: #2d3748;
+    --card: #ffffff;
+    --card-foreground: #2d3748;
+    --popover: #ffffff;
+    --popover-foreground: #2d3748;
+    --primary: #2563eb;
+    --primary-foreground: #ffffff;
+    --secondary: #e2e8f0;
+    --secondary-foreground: #2d3748;
+    --muted: #f1f5f9;
+    --muted-foreground: #475569;
+    --accent: #4f46e5;
+    --accent-foreground: #ffffff;
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+    --border: #e2e8f0;
+    --input: #f8fafc;
+    --ring: #2563eb;
+    --radius: 0.5rem;
+    --font-sans: "Manrope", sans-serif;
+    --font-serif: "Playfair Display", serif;
+    --font-mono: "Fira Code", monospace;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.dark .theme-corporate {
+    --background: #1a202c;
+    --foreground: #e2e8f0;
+    --card: #2d3748;
+    --card-foreground: #e2e8f0;
+    --popover: #2d3748;
+    --popover-foreground: #e2e8f0;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --secondary: #4a5568;
+    --secondary-foreground: #e2e8f0;
+    --muted: #2d3748;
+    --muted-foreground: #a0aec0;
+    --accent: #6366f1;
+    --accent-foreground: #ffffff;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #4a5568;
+    --input: #1a202c;
+    --ring: #3b82f6;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+/* 3. NEW: Forest Green Theme */
+.theme-forest {
+    --background: #fbfaf8;
+    --foreground: #3a3a3a;
+    --card: #ffffff;
+    --card-foreground: #3a3a3a;
+    --popover: #ffffff;
+    --popover-foreground: #3a3a3a;
+    --primary: #22c55e;
+    --primary-foreground: #ffffff;
+    --secondary: #f0fdf4;
+    --secondary-foreground: #166534;
+    --muted: #f0fdf4;
+    --muted-foreground: #15803d;
+    --accent: #16a34a;
+    --accent-foreground: #ffffff;
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+    --border: #dcfce7;
+    --input: #f0fdf4;
+    --ring: #22c55e;
+    --radius: 0.5rem;
+    --font-sans: "Manrope", sans-serif;
+    --font-serif: "Playfair Display", serif;
+    --font-mono: "Fira Code", monospace;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.dark .theme-forest {
+    --background: #1a2e26;
+    --foreground: #d1fae5;
+    --card: #223a31;
+    --card-foreground: #d1fae5;
+    --popover: #223a31;
+    --popover-foreground: #d1fae5;
+    --primary: #22c55e;
+    --primary-foreground: #064e3b;
+    --secondary: #064e3b;
+    --secondary-foreground: #a7f3d0;
+    --muted: #052e16;
+    --muted-foreground: #6ee7b7;
+    --accent: #16a34a;
+    --accent-foreground: #d1fae5;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #064e3b;
+    --input: #1a2e26;
+    --ring: #22c55e;
+    --shadow-sm: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.30), 0 1px 2px -1px hsl(0 0% 0% / 0.30);
+    --shadow-md: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.30), 0 2px 4px -1px hsl(0 0% 0% / 0.30);
+    --shadow-lg: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.30), 0 4px 6px -1px hsl(0 0% 0% / 0.30);
+    --shadow-xl: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.30), 0 8px 10px -1px hsl(0 0% 0% / 0.30);
+    --shadow-2xl: 0 0.25rem 0.5rem 0 hsl(0 0% 0% / 0.75);
+}
+
+/* --- BASE STYLES --- */
+/* (Moved from index.html) */
+
+/* 4. Base styles for Material Symbols */
+.material-symbols-outlined {
+    font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 20;
+    vertical-align: bottom; /* Aligns icons with text */
+}
+
+body {
+    font-family: var(--font-sans);
+}
+
+/* Custom scrollbar updated with theme colors */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--background); }
+::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.modal { display: none; transition: opacity 0.3s ease; }
+.modal.flex { display: flex; }
+.modal-content { transition: transform 0.3s ease; }
+
+/* Updated custom classes with theme colors */
+.nav-link.active {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+}
+.nav-link:not(.active):hover {
+    background-color: var(--muted);
+}
+
+.status-tab.active {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.job-row:hover { background-color: var(--muted); }
+.job-row td[data-field="details"] { cursor: pointer; }
+td[data-field="notes"] {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+td[data-field="notes"]:hover {
+    background-color: var(--muted);
+}
+
+.editable-select {
+    background-color: var(--input);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+    border-radius: var(--radius);
+    padding: 4px 8px;
+    width: 100%;
+}
+
+.analyze-match-btn:disabled, #generate-ai-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Added spin animation for loading icon */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
+/* Styles for new Kanban View */
+.view-toggle.active {
+    background-color: var(--card);
+    color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+.kanban-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.kanban-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Fix for Prose colors */
+.prose {
+    color: var(--card-foreground);
+}
+.prose strong {
+    color: var(--foreground);
+}
+.prose a {
+    color: var(--primary);
+}
+.prose code {
+    color: var(--accent);
+}
+.prose ul > li::before {
+    background-color: var(--muted-foreground);
+}
+
+/* Styles for column visibility toggle */
+.column-toggle-popover {
+    display: none;
+    position: absolute;
+    z-index: 50;
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem;
+}
+.column-toggle-popover.show {
+    display: block;
+}
+.column-toggle-popover label {
+    display: block;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+.column-toggle-popover label:hover {
+    background-color: var(--muted);
+}
+/* NEW: Styles for draggable column items */
+.column-item {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    cursor: grab;
+    user-select: none;
+}
+.column-item:hover {
+    background-color: var(--muted);
+}
+.column-item.dragging {
+    opacity: 0.5;
+    background-color: var(--secondary);
+}
+.column-item .drag-handle {
+    cursor: grab;
+    margin-right: 0.5rem;
+    color: var(--muted-foreground);
+}
+.column-item .col-priority {
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    width: 1rem;
+}
+.column-item label {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+.column-item input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+
+/* Styles for pagination */
+.pagination-controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 0 0.5rem;
+}
+.pagination-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--card);
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+}
+.pagination-btn {
+    background-color: var(--background);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pagination-btn:hover {
+    background-color: var(--muted);
+}
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Styles for company grid */
+.company-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+.company-card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+}
+.company-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* NEW: Styles for Related Job Card */
+.related-job-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+.related-job-card {
+    background-color: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+.related-job-card h4 {
+    font-weight: 600;
+    cursor: pointer;
+}
+.related-job-card h4:hover {
+    color: var(--primary);
+}
+.related-job-card p {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-top: 0.5rem;
+}

@@ -227,6 +227,67 @@
             background-color: var(--muted-foreground);
         }
         
+        /* Styles for column visibility toggle */
+        .column-toggle-popover {
+            display: none;
+            position: absolute;
+            z-index: 50;
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 0.5rem;
+        }
+        .column-toggle-popover.show {
+            display: block;
+        }
+        .column-toggle-popover label {
+            display: block;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+        }
+        .column-toggle-popover label:hover {
+            background-color: var(--muted);
+        }
+
+        /* Styles for pagination */
+        .pagination-btn {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            color: var(--foreground);
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius);
+            transition: background-color 0.2s ease;
+        }
+        .pagination-btn:hover {
+            background-color: var(--muted);
+        }
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Styles for company grid */
+        .company-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .company-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+            cursor: pointer;
+        }
+        .company-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
     </style>
 </head>
 <body class="bg-background text-foreground font-sans antialiased">
@@ -283,7 +344,7 @@
                                 <!-- Status tabs will be injected here -->
                             </div>
                             <!-- Sort (Hidden in Kanban) -->
-                            <div id="sort-controls" class="pl-0 sm:pl-4">
+                            <div id="sort-controls" class="pl-0 sm:pl-4 flex items-center gap-4">
                                 <select id="sort-jobs-select" class="editable-select text-sm">
                                     <option value="created_at DESC">Sort by: Date (Newest)</option>
                                     <option value="salary DESC">Sort by: Salary (High)</option>
@@ -291,6 +352,15 @@
                                     <option value="title ASC">Sort by: Position (A-Z)</option>
                                     <option value="company_name ASC">Sort by: Company (A-Z)</option>
                                 </select>
+                                <!-- NEW: Column Visibility Toggle -->
+                                <div class="relative">
+                                    <button id="manage-columns-btn" class="view-toggle p-2 rounded-md leading-none bg-muted" title="Manage Columns">
+                                        <span class="material-symbols-outlined">view_column</span>
+                                    </button>
+                                    <div id="manage-columns-popover" class="column-toggle-popover right-0 mt-2 w-48">
+                                        <!-- Checkboxes will be injected here -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="flex items-center gap-4">
@@ -307,26 +377,27 @@
                     <div id="jobs-table-container" class="bg-card rounded-lg shadow-md overflow-x-auto">
                         <table class="min-w-full">
                             <thead class="bg-muted">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Job Position</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Company</th>
-                                    <!-- ADDED: Location -->
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Location</th>
-                                    <!-- ADDED: Salary -->
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Salary (LPA)</th>
-                                    <!-- ADDED: URL -->
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">URL</th>
-                                    <!-- ADDED: Description -->
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Description</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Applied Profile</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Match %</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Status (Dbl-click)</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Notes (Click)</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Date Saved</th>
-                                </tr>
+                                <!-- Table Head will be injected by JS -->
                             </thead>
                             <tbody id="jobs-table-body" class="divide-y divide-border"></tbody>
                         </table>
+                    </div>
+                    <!-- NEW: Pagination Controls -->
+                    <div id="pagination-controls" class="flex justify-between items-center mt-4 px-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm">Items per page:</span>
+                            <select id="items-per-page-select" class="editable-select text-sm w-auto">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="page-info" class="text-sm">Page 1 of 1</span>
+                            <button id="prev-page-btn" class="pagination-btn"><span class="material-symbols-outlined">chevron_left</span></button>
+                            <button id="next-page-btn" class="pagination-btn"><span class="material-symbols-outlined">chevron_right</span></button>
+                        </div>
                     </div>
 
                     <!-- NEW: Jobs Kanban Container -->
@@ -385,24 +456,78 @@
                 </div>
             </div>
 
-            <!-- Companies View -->
+            <!-- Companies View: REBUILT -->
             <div id="companies-view" class="view-content hidden">
-                 <div class="flex justify-end mb-4">
-                    <button id="add-company-btn" class="bg-primary hover:bg-accent text-primary-foreground font-bold py-2 px-4 rounded-lg flex items-center"><span class="material-symbols-outlined mr-2">add</span>Add New Company</button>
+                <!-- Grid View (Default) -->
+                <div id="company-grid-container">
+                    <div class="flex justify-between items-center mb-4 gap-4">
+                        <div class="relative flex-grow">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">search</span>
+                            <input type="text" id="company-search-input" placeholder="Search companies..." class="bg-input border border-border text-foreground text-sm rounded-lg focus:ring-ring focus:border-ring block w-full p-2.5 pl-10">
+                        </div>
+                        <button id="add-company-btn" class="bg-primary hover:bg-accent text-primary-foreground font-bold py-2 px-4 rounded-lg flex items-center whitespace-nowrap"><span class="material-symbols-outlined mr-2">add</span>Add Company</button>
+                    </div>
+                    <div id="company-grid" class="company-grid">
+                        <!-- Company cards will be injected here -->
+                    </div>
                 </div>
-                <div class="bg-card rounded-lg shadow-md overflow-hidden">
-                    <table class="min-w-full">
-                        <thead class="bg-muted">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Industry</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Location</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Website</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider">Notes (Click to Edit)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="companies-table-body" class="divide-y divide-border"></tbody>
-                    </table>
+
+                <!-- Company Detail View (Hidden) -->
+                <div id="company-detail-container" class="hidden">
+                    <button id="back-to-company-grid" class="mb-4 text-sm text-primary hover:underline flex items-center"><span class="material-symbols-outlined mr-1">arrow_back</span>Back to list</button>
+                    <div class="flex flex-col lg:flex-row gap-6">
+                        <!-- Left Column: Details & AI -->
+                        <div class="lg:w-1/3 space-y-6">
+                            <div class="bg-card p-6 rounded-lg shadow-md">
+                                <h3 class="text-xl font-semibold mb-4">Company Details</h3>
+                                <form id="edit-company-form" class="space-y-4">
+                                    <input type="hidden" name="id">
+                                    <div>
+                                        <label class="text-sm font-medium text-muted-foreground">Name</label>
+                                        <input type="text" name="name" required class="bg-input border border-border p-2 rounded-lg w-full">
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-muted-foreground">Industry</label>
+                                        <input type="text" name="industry" class="bg-input border border-border p-2 rounded-lg w-full">
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-muted-foreground">Location</label>
+                                        <input type="text" name="location" class="bg-input border border-border p-2 rounded-lg w-full">
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-muted-foreground">Website</label>
+                                        <input type="url" name="website" class="bg-input border border-border p-2 rounded-lg w-full">
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-muted-foreground">LinkedIn</label>
+                                        <input type="url" name="linkedin" class="bg-input border border-border p-2 rounded-lg w-full">
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-muted-foreground">Notes</label>
+                                        <textarea name="notes" rows="4" class="bg-input border border-border p-2 rounded-lg w-full"></textarea>
+                                    </div>
+                                    <button type="submit" class="w-full px-4 py-2 bg-primary hover:bg-accent text-primary-foreground rounded-lg font-semibold">Save Changes</button>
+                                </form>
+                            </div>
+                            <div class="bg-card p-6 rounded-lg shadow-md">
+                                <h3 class="text-xl font-semibold mb-4">AI Analysis</h3>
+                                <button id="run-company-ai-btn" class="w-full px-4 py-2 bg-secondary text-secondary-foreground hover:bg-muted rounded-lg font-semibold flex items-center justify-center">
+                                    <span class="material-symbols-outlined mr-2">auto_awesome</span>Generate Company Summary
+                                </button>
+                                <div id="company-ai-output" class="text-sm text-card-foreground mt-4 prose max-w-none">
+                                    <!-- AI output will appear here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Related Jobs -->
+                        <div class="lg:w-2/3 bg-card p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-semibold mb-4">Related Jobs</h3>
+                            <div id="related-jobs-list" class="space-y-4">
+                                <!-- Related jobs will be injected here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -467,6 +592,11 @@
                                 <button id="test-connection-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">Test</button>
                             </div>
                             <p class="text-xs text-muted-foreground mt-2">Make sure your local server is running before testing.</p>
+                            <!-- NEW: Auto-create company toggle -->
+                            <div class="flex items-center justify-between mt-4">
+                                <label for="auto-create-company-toggle" class="text-sm font-medium">Auto-create new companies</label>
+                                <input type="checkbox" id="auto-create-company-toggle" class="h-4 w-4 rounded border-border text-primary focus:ring-primary">
+                            </div>
                         </div>
                         <div class="bg-card p-6 rounded-lg shadow-lg">
                             <h3 class="text-xl font-semibold mb-4">Database Management</h3>
@@ -622,6 +752,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     let logs = [];
     let unsavedAnalysisData = null;
     let currentJobsView = 'table'; // 'table' or 'kanban'
+    
+    // NEW: App state variables
+    let appState = {
+        autoCreateCompany: true,
+        currentPage: 1,
+        itemsPerPage: 10,
+        columnVisibility: {
+            title: true,
+            company_name: true,
+            location: true,
+            salary: true,
+            url: true,
+            description: true,
+            profile_id: true,
+            match_percentage: true,
+            status: true,
+            notes: true,
+            created_at: true,
+        }
+    };
+    
+    // Column definitions
+    const COLUMN_DEFINITIONS = {
+        title: "Job Position",
+        company_name: "Company",
+        location: "Location",
+        salary: "Salary (LPA)",
+        url: "URL",
+        description: "Description",
+        profile_id: "Applied Profile",
+        match_percentage: "Match %",
+        status: "Status",
+        notes: "Notes",
+        created_at: "Date Saved"
+    };
 
     // --- DOM Elements ---
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -638,6 +803,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showKanbanViewBtn = document.getElementById('show-kanban-view');
     const statusTabs = document.getElementById('status-tabs');
     const sortControls = document.getElementById('sort-controls');
+    // NEW: Pagination elements
+    const paginationControls = document.getElementById('pagination-controls');
+    const itemsPerPageSelect = document.getElementById('items-per-page-select');
+    const pageInfo = document.getElementById('page-info');
+    const prevPageBtn = document.getElementById('prev-page-btn');
+    const nextPageBtn = document.getElementById('next-page-btn');
+    // NEW: Column toggle elements
+    const manageColumnsBtn = document.getElementById('manage-columns-btn');
+    const manageColumnsPopover = document.getElementById('manage-columns-popover');
+    // NEW: Company view elements
+    const companyGridContainer = document.getElementById('company-grid-container');
+    const companyDetailContainer = document.getElementById('company-detail-container');
+    const companyGrid = document.getElementById('company-grid');
+    const companySearchInput = document.getElementById('company-search-input');
+    const backToCompanyGridBtn = document.getElementById('back-to-company-grid');
+    const editCompanyForm = document.getElementById('edit-company-form');
+    const relatedJobsList = document.getElementById('related-jobs-list');
+    // NEW: Settings elements
+    const autoCreateCompanyToggle = document.getElementById('auto-create-company-toggle');
+
 
     // --- Utility Functions ---
     function showLoading(text) {
@@ -706,6 +891,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (viewId === 'logs-view') renderLogs();
         if (viewId === 'profiles-view') renderProfiles();
+        if (viewId === 'companies-view') renderCompaniesGrid(); // Render company grid
         logEvent('INFO', `Switched to view: ${viewId}`);
     }
 
@@ -729,9 +915,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             await createTables();
             renderStatusTabs();
+            // NEW: Render column toggles
+            renderColumnToggles();
             await Promise.all([
                 refreshJobsView(),
-                renderCompanies(),
+                renderCompaniesGrid(), // Use new grid render
                 renderPeople(),
                 renderProfiles()
             ]);
@@ -817,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             jobsKanbanContainer.classList.add('hidden');
             statusTabs.classList.remove('hidden');
             sortControls.classList.remove('hidden');
+            paginationControls.classList.remove('hidden'); // Show pagination
             renderJobs(currentJobViewStatus);
         } else {
             showTableViewBtn.classList.remove('active');
@@ -825,6 +1014,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             jobsKanbanContainer.classList.remove('hidden');
             statusTabs.classList.add('hidden');
             sortControls.classList.add('hidden');
+            paginationControls.classList.add('hidden'); // Hide pagination
             renderJobsKanban();
         }
         logEvent('INFO', `Switched to ${view} view.`);
@@ -865,15 +1055,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // UPDATED: renderJobs (Table View)
+    // UPDATED: renderJobs (Table View) - Now with Pagination and Column Visibility
     async function renderJobs(status) {
+        // 1. Get total count for pagination
+        const countRes = executeQuery(`SELECT COUNT(*) FROM jobs WHERE status = ?`, [status]);
+        const totalItems = countRes[0].values[0][0];
+        const totalPages = Math.ceil(totalItems / appState.itemsPerPage);
+        appState.currentPage = Math.min(appState.currentPage, totalPages) || 1;
+        
+        renderPaginationControls(totalItems, totalPages);
+        
+        // 2. Get profiles for dropdown
         const profilesRes = executeQuery("SELECT id, name FROM profiles ORDER BY name");
         const profiles = profilesRes.length > 0 ? profilesRes[0].values : [];
-        const res = executeQuery(`SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage, j.notes, j.salary, j.url, j.description FROM jobs j WHERE j.status = ? ORDER BY ${currentSortOrder}`, [status]);
+        
+        // 3. Get paginated job data
+        const offset = (appState.currentPage - 1) * appState.itemsPerPage;
+        const res = executeQuery(`SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage, j.notes, j.salary, j.url, j.description FROM jobs j WHERE j.status = ? ORDER BY ${currentSortOrder} LIMIT ? OFFSET ?`, [status, appState.itemsPerPage, offset]);
         const jobs = res.length > 0 ? res[0].values : [];
         
+        // 4. Render Table Head
+        const tableHead = jobsTableContainer.querySelector('thead');
+        tableHead.innerHTML = `
+            <tr>
+                ${Object.keys(COLUMN_DEFINITIONS).map(key => `
+                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider ${appState.columnVisibility[key] ? '' : 'hidden'}" data-col-key="${key}">
+                        ${COLUMN_DEFINITIONS[key]}
+                    </th>
+                `).join('')}
+            </tr>
+        `;
+
+        // 5. Render Table Body
         if (jobs.length === 0) {
-            jobsTableBody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-muted-foreground">No jobs in this category.</td></tr>`;
+            const colSpan = Object.keys(appState.columnVisibility).filter(k => appState.columnVisibility[k]).length;
+            jobsTableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center py-8 text-muted-foreground">No jobs in this category.</td></tr>`;
             return;
         }
         
@@ -883,20 +1099,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             return `
                 <tr class="job-row" data-id="${id}">
-                    <td class="px-6 py-4 whitespace-nowrap" data-field="details">${title}</td>
-                    <td class="px-6 py-4 whitespace-nowrap" data-field="details">${company_name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap" data-field="details">${location || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${salary ? `₹${salary} LPA` : 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.title ? '' : 'hidden'}" data-field="details">${title}</td>
+                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.company_name ? '' : 'hidden'}" data-field="details">${company_name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.location ? '' : 'hidden'}" data-field="details">${location || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.salary ? '' : 'hidden'}">${salary ? `₹${salary} LPA` : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.url ? '' : 'hidden'}">
                         ${url ? `<a href="${url}" target="_blank" class="text-primary hover:underline flex items-center"><span class="material-symbols-outlined text-sm mr-1">open_in_new</span>Link</a>` : 'N/A'}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${description || ''}">${(description || '').substring(0, 30)}${description && description.length > 30 ? '...' : ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate ${appState.columnVisibility.description ? '' : 'hidden'}" title="${description || ''}">${(description || '').substring(0, 30)}${description && description.length > 30 ? '...' : ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.profile_id ? '' : 'hidden'}">
                         <select data-job-id="${id}" class="profile-select editable-select text-sm">
                             ${profileOptionsHtml}
                         </select>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                    <td class="px-6 py-4 whitespace-nowrap text-center ${appState.columnVisibility.match_percentage ? '' : 'hidden'}">
                         <div class="flex items-center justify-center space-x-2">
                             <span>${match_percentage === null || match_percentage === undefined ? 'N/A' : `${match_percentage}%`}</span>
                             <button title="Run AI Match Analysis" class="analyze-match-btn text-primary hover:text-accent" data-job-id="${id}" ${!profile_id ? 'disabled' : ''}>
@@ -904,19 +1120,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </button>
                         </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap" data-field="status" data-current-status="${currentStatus}">${currentStatus}</td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="jobs" title="${notes || 'Click to add notes'}">${notes || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap" data-field="details">${new Date(created_at).toLocaleDateString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.status ? '' : 'hidden'}" data-field="status" data-current-status="${currentStatus}">${currentStatus}</td>
+                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate ${appState.columnVisibility.notes ? '' : 'hidden'}" data-field="notes" data-id="${id}" data-type="jobs" title="${notes || 'Click to add notes'}">${notes || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.created_at ? '' : 'hidden'}" data-field="details">${new Date(created_at).toLocaleDateString()}</td>
                 </tr>`;
         }).join('');
     }
 
-    // NEW: renderJobsKanban (Kanban View)
+    // NEW: Render Pagination Controls
+    function renderPaginationControls(totalItems, totalPages) {
+        pageInfo.textContent = `Page ${appState.currentPage} of ${totalPages || 1}`;
+        prevPageBtn.disabled = appState.currentPage <= 1;
+        nextPageBtn.disabled = appState.currentPage >= totalPages;
+    }
+
+    // NEW: Render Column Toggles
+    function renderColumnToggles() {
+        manageColumnsPopover.innerHTML = Object.keys(COLUMN_DEFINITIONS).map(key => `
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" data-col-key="${key}" class="h-4 w-4 rounded border-border text-primary focus:ring-primary" ${appState.columnVisibility[key] ? 'checked' : ''}>
+                <span class="text-sm">${COLUMN_DEFINITIONS[key]}</span>
+            </label>
+        `).join('');
+
+        // Add event listeners
+        manageColumnsPopover.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const key = e.target.dataset.colKey;
+                appState.columnVisibility[key] = e.target.checked;
+                localStorage.setItem('jobTrackerColumnVisibility', JSON.stringify(appState.columnVisibility));
+                refreshJobsView(); // Re-render the table
+            });
+        });
+    }
+
+    // NEW: renderJobsKanban (Kanban View) - Now with Drag-and-Drop
     async function renderJobsKanban() {
-        // FIX: Removed the "j." alias from the query as it wasn't defined for the table.
         const res = executeQuery(`SELECT id, title, company_name, match_percentage, salary, status FROM jobs ORDER BY created_at DESC`);
         
-        // This check prevents the 'length' of null error if the query fails
         if (!res) {
             jobsKanbanContainer.innerHTML = `<p class="text-destructive p-4">Error loading Kanban data.</p>`;
             return;
@@ -944,10 +1185,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span>${status}</span>
                             <span class="text-xs font-normal bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">${jobsByStatus[status].length}</span>
                         </h3>
-                        <div id="kanban-col-${status.replace(/\s/g, '')}" class="space-y-3 p-3 bg-card rounded-b-lg h-full overflow-y-auto" style="max-height: 70vh;">
+                        <div id="kanban-col-${status}" data-status="${status}" class="kanban-dropzone space-y-3 p-3 bg-card rounded-b-lg h-full overflow-y-auto" style="min-height: 50vh;">
                             ${jobsByStatus[status].length === 0 ? `<p class="text-sm text-muted-foreground p-2">No jobs here.</p>` : ''}
                             ${jobsByStatus[status].map(job => `
-                                <div class="kanban-card p-3 bg-background rounded-lg shadow-sm cursor-pointer" data-id="${job.id}">
+                                <div class="kanban-card p-3 bg-background rounded-lg shadow-sm cursor-pointer" data-id="${job.id}" draggable="true">
                                     <h4 class="font-semibold text-sm">${job.title}</h4>
                                     <p class="text-sm text-muted-foreground">${job.company_name}</p>
                                     <div class="flex justify-between items-center mt-2 text-xs">
@@ -961,6 +1202,57 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `).join('')}
             </div>
         `;
+
+        // Add drag-and-drop listeners
+        setupDragAndDrop();
+    }
+
+    // NEW: Drag and Drop Logic
+    function setupDragAndDrop() {
+        let draggedItemId = null;
+
+        document.querySelectorAll('.kanban-card').forEach(card => {
+            card.addEventListener('dragstart', e => {
+                draggedItemId = e.target.dataset.id;
+                setTimeout(() => e.target.classList.add('opacity-50'), 0);
+            });
+
+            card.addEventListener('dragend', e => {
+                draggedItemId = null;
+                e.target.classList.remove('opacity-50');
+            });
+        });
+
+        document.querySelectorAll('.kanban-dropzone').forEach(zone => {
+            zone.addEventListener('dragover', e => {
+                e.preventDefault(); // Allow drop
+                zone.classList.add('bg-muted');
+            });
+
+            zone.addEventListener('dragleave', e => {
+                zone.classList.remove('bg-muted');
+            });
+
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                zone.classList.remove('bg-muted');
+                const newStatus = zone.dataset.status;
+                
+                if (draggedItemId && newStatus) {
+                    // Update DB
+                    executeQuery("UPDATE jobs SET status = ? WHERE id = ?", [newStatus, draggedItemId]);
+                    logEvent('INFO', `Dragged job ID ${draggedItemId} to ${newStatus}`);
+                    
+                    // Optimistically update UI
+                    const draggedCard = document.querySelector(`.kanban-card[data-id="${draggedItemId}"]`);
+                    if(draggedCard) {
+                        zone.appendChild(draggedCard);
+                    } else {
+                        renderJobsKanban(); // Fallback to full re-render
+                    }
+                }
+            });
+        });
     }
 
 
@@ -985,21 +1277,116 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </tr>`}).join('');
     }
 
-    async function renderCompanies() {
-        const tableBody = document.getElementById('companies-table-body');
-        const res = executeQuery("SELECT id, name, industry, location, website, notes FROM companies ORDER BY name");
+    // UPDATED: renderCompanies to renderCompaniesGrid
+    async function renderCompaniesGrid() {
+        const searchTerm = companySearchInput.value.toLowerCase();
+        const res = executeQuery("SELECT id, name, industry, location FROM companies ORDER BY name");
         const companies = res.length > 0 ? res[0].values : [];
-        tableBody.innerHTML = companies.map(row => {
-            const [id, name, industry, location, website, notes] = row;
-            return `
-                <tr class="hover:bg-muted">
-                    <td class="px-6 py-4 whitespace-nowrap">${name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${industry || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${location || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap"><a href="${website}" target="_blank" class="text-primary hover:underline">${website || ''}</a></td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="companies" title="${notes || 'Click to add notes'}">${notes || ''}</td>
-                </tr>`}).join('');
+        
+        const filteredCompanies = companies.filter(([id, name, industry, location]) => 
+            name.toLowerCase().includes(searchTerm) || 
+            (industry || '').toLowerCase().includes(searchTerm) || 
+            (location || '').toLowerCase().includes(searchTerm)
+        );
+        
+        if (filteredCompanies.length === 0) {
+            companyGrid.innerHTML = `<p class="text-muted-foreground">No companies found.</p>`;
+            return;
+        }
+
+        companyGrid.innerHTML = filteredCompanies.map(([id, name, industry, location]) => `
+            <div class="company-card" data-id="${id}">
+                <h3 class="font-semibold text-lg">${name}</h3>
+                <p class="text-sm text-muted-foreground">${industry || 'No industry'}</p>
+                <p class="text-sm text-muted-foreground mt-1 flex items-center">
+                    <span class="material-symbols-outlined text-sm mr-1">location_on</span>
+                    ${location || 'No location'}
+                </p>
+            </div>
+        `).join('');
+
+        // Add click listeners
+        companyGrid.querySelectorAll('.company-card').forEach(card => {
+            card.addEventListener('click', () => {
+                showCompanyDetail(card.dataset.id);
+            });
+        });
     }
+
+    // NEW: Show Company Detail Page
+    async function showCompanyDetail(companyId) {
+        companyGridContainer.classList.add('hidden');
+        companyDetailContainer.classList.remove('hidden');
+
+        // 1. Fetch and populate company details
+        const res = executeQuery("SELECT id, name, industry, location, website, linkedin, notes FROM companies WHERE id = ?", [companyId]);
+        if (!res || res.length === 0) return;
+        
+        const [id, name, industry, location, website, linkedin, notes] = res[0].values[0];
+        editCompanyForm.elements.id.value = id;
+        editCompanyForm.elements.name.value = name;
+        editCompanyForm.elements.industry.value = industry || '';
+        editCompanyForm.elements.location.value = location || '';
+        editCompanyForm.elements.website.value = website || '';
+        editCompanyForm.elements.linkedin.value = linkedin || '';
+        editCompanyForm.elements.notes.value = notes || '';
+
+        // 2. Fetch and render related jobs
+        const profilesRes = executeQuery("SELECT id, name FROM profiles");
+        const profilesMap = profilesRes.length > 0 ? profilesRes[0].values.reduce((acc, [id, name]) => {
+            acc[id] = name;
+            return acc;
+        }, {}) : {};
+
+        const jobsRes = executeQuery("SELECT id, title, status, notes, profile_id FROM jobs WHERE company_name = ? ORDER BY created_at DESC", [name]);
+        const jobs = jobsRes.length > 0 ? jobsRes[0].values : [];
+
+        if (jobs.length === 0) {
+            relatedJobsList.innerHTML = `<p class="text-muted-foreground">No jobs found for this company.</p>`;
+        } else {
+            relatedJobsList.innerHTML = jobs.map(([jobId, title, status, notes, profile_id]) => `
+                <div class="p-3 bg-background rounded-lg border border-border">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-semibold text-sm cursor-pointer" data-job-id="${jobId}">${title}</h4>
+                        <span class="text-xs font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">${status}</span>
+                    </div>
+                    <p class="text-sm text-muted-foreground mt-1"><strong>Profile:</strong> ${profilesMap[profile_id] || 'N/A'}</p>
+                    <p class="text-sm text-muted-foreground mt-1 truncate"><strong>Notes:</strong> ${notes || 'N/A'}</p>
+                </div>
+            `).join('');
+
+            // Add click listeners to job titles
+            relatedJobsList.querySelectorAll('h4[data-job-id]').forEach(titleEl => {
+                titleEl.addEventListener('click', () => {
+                    switchView('jobs-view'); // Switch to main jobs view
+                    showJobDetail(titleEl.dataset.jobId); // Open the detail modal
+                });
+            });
+        }
+        
+        // Clear AI output
+        document.getElementById('company-ai-output').innerHTML = '';
+    }
+
+    // NEW: Handle Company Form Submit
+    async function handleEditCompany(e) {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target).entries());
+        executeQuery("UPDATE companies SET name = ?, industry = ?, location = ?, website = ?, linkedin = ?, notes = ? WHERE id = ?", 
+            [data.name, data.industry, data.location, data.website, data.linkedin, data.notes, data.id]);
+        
+        // Also update any jobs that had the old name
+        const oldNameRes = executeQuery("SELECT name FROM companies WHERE id = ?", [data.id]);
+        const oldName = oldNameRes[0].values[0][0];
+        if (oldName !== data.name) {
+            executeQuery("UPDATE jobs SET company_name = ? WHERE company_name = ?", [data.name, oldName]);
+        }
+
+        logEvent('SUCCESS', `Updated company: ${data.name}`);
+        showStatus('Company updated successfully!', 'success');
+        await renderCompaniesGrid(); // Refresh grid
+    }
+
 
     async function renderPeople() {
         const tableBody = document.getElementById('people-table-body');
@@ -1129,6 +1516,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         showTableViewBtn.addEventListener('click', () => toggleJobsView('table'));
         showKanbanViewBtn.addEventListener('click', () => toggleJobsView('kanban'));
 
+        // NEW: Pagination listeners
+        prevPageBtn.addEventListener('click', () => {
+            if (appState.currentPage > 1) {
+                appState.currentPage--;
+                renderJobs(currentJobViewStatus);
+            }
+        });
+        nextPageBtn.addEventListener('click', () => {
+            appState.currentPage++; // renderJobs will cap this if it's too high
+            renderJobs(currentJobViewStatus);
+        });
+        itemsPerPageSelect.addEventListener('change', (e) => {
+            appState.itemsPerPage = parseInt(e.target.value, 10);
+            appState.currentPage = 1; // Reset to first page
+            renderJobs(currentJobViewStatus);
+        });
+
+        // NEW: Column toggle popover listener
+        manageColumnsBtn.addEventListener('click', () => {
+            manageColumnsPopover.classList.toggle('show');
+        });
+        // Close popover if clicking outside
+        document.addEventListener('click', (e) => {
+            if (!manageColumnsBtn.contains(e.target) && !manageColumnsPopover.contains(e.target)) {
+                manageColumnsPopover.classList.remove('show');
+            }
+        });
+
+
         document.getElementById('profiles-table-body').addEventListener('click', e => {
             const deleteBtn = e.target.closest('.delete-profile-btn');
             if (deleteBtn && confirm('Are you sure you want to delete this profile?')) {
@@ -1155,6 +1571,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('add-company-form').addEventListener('submit', handleAddCompany);
         document.getElementById('add-person-form').addEventListener('submit', handleAddPerson);
         document.getElementById('edit-notes-form').addEventListener('submit', handleEditNotes);
+        // NEW: Company view listeners
+        companySearchInput.addEventListener('input', renderCompaniesGrid);
+        backToCompanyGridBtn.addEventListener('click', () => {
+            companyDetailContainer.classList.add('hidden');
+            companyGridContainer.classList.remove('hidden');
+            renderCompaniesGrid(); // Refresh grid in case names changed
+        });
+        editCompanyForm.addEventListener('submit', handleEditCompany);
+
         
         document.querySelector('main').addEventListener('click', e => {
             const notesCell = e.target.closest('td[data-field="notes"]');
@@ -1164,6 +1589,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         document.getElementById('llm-api-url').addEventListener('change', saveSettings);
+        // NEW: Setting toggle listener
+        autoCreateCompanyToggle.addEventListener('change', saveSettings);
         document.getElementById('test-connection-btn').addEventListener('click', testLLMConnection);
         document.getElementById('backup-db-btn').addEventListener('click', downloadBackup);
         document.getElementById('restore-db-input').addEventListener('change', restoreDatabase);
@@ -1219,6 +1646,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleAddJob(e) {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target).entries());
+
+        // NEW: Auto-create company logic
+        if (appState.autoCreateCompany && data.company_name) {
+            try {
+                const res = executeQuery("SELECT id FROM companies WHERE name = ?", [data.company_name]);
+                if (res.length === 0 || res[0].values.length === 0) {
+                    executeQuery("INSERT INTO companies (name) VALUES (?)", [data.company_name]);
+                    logEvent('INFO', `Auto-created new company: ${data.company_name}`);
+                }
+            } catch (err) {
+                logEvent('ERROR', `Failed to auto-create company: ${err.message}`);
+            }
+        }
+
         executeQuery("INSERT INTO jobs (title, company_name, location, salary, url, description, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [data.title, data.company_name, data.location, data.salary || null, data.url, data.description, 'Bookmarked', data.notes]);
         logEvent('SUCCESS', `Added new job: ${data.title}`);
         showStatus('Job saved successfully!', 'success');
@@ -1245,7 +1686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         executeQuery("INSERT OR IGNORE INTO companies (name, industry, location, website, linkedin, notes) VALUES (?, ?, ?, ?, ?, ?)", [data.name, data.industry, data.location, data.website, data.linkedin, data.notes]);
         logEvent('SUCCESS', `Added company: ${data.name}`);
         showStatus('Company saved!', 'success');
-        await renderCompanies();
+        await renderCompaniesGrid(); // Refresh grid
         closeModal('add-company-modal');
     }
 
@@ -1300,15 +1741,49 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function saveSettings() {
         const apiUrl = document.getElementById('llm-api-url').value;
-        localStorage.setItem('jobTrackerSettings', JSON.stringify({ llmApiUrl: apiUrl }));
+        appState.autoCreateCompany = autoCreateCompanyToggle.checked;
+        
+        const settings = {
+            llmApiUrl: apiUrl,
+            autoCreateCompany: appState.autoCreateCompany,
+            itemsPerPage: appState.itemsPerPage, // Save pagination setting
+            columnVisibility: appState.columnVisibility // Save column visibility
+        };
+        localStorage.setItem('jobTrackerSettings', JSON.stringify(settings));
         logEvent('SUCCESS', 'Settings saved.');
         showStatus('Settings saved!', 'success');
     }
 
     function loadSettings() {
         const settings = JSON.parse(localStorage.getItem('jobTrackerSettings'));
-        if (settings && settings.llmApiUrl) {
-            document.getElementById('llm-api-url').value = settings.llmApiUrl;
+        if (settings) {
+            if (settings.llmApiUrl) {
+                document.getElementById('llm-api-url').value = settings.llmApiUrl;
+            }
+            appState.autoCreateCompany = settings.autoCreateCompany !== false; // default to true
+            autoCreateCompanyToggle.checked = appState.autoCreateCompany;
+
+            // Load pagination and column settings
+            appState.itemsPerPage = settings.itemsPerPage || 10;
+            itemsPerPageSelect.value = appState.itemsPerPage;
+            
+            if (settings.columnVisibility) {
+                appState.columnVisibility = settings.columnVisibility;
+            }
+            // Ensure all keys exist in visibility state, even if new ones were added
+            Object.keys(COLUMN_DEFINITIONS).forEach(key => {
+                if (appState.columnVisibility[key] === undefined) {
+                    appState.columnVisibility[key] = true;
+                }
+            });
+        }
+        
+        // Load legacy visibility settings if they exist
+        const legacyColumnVisibility = JSON.parse(localStorage.getItem('jobTrackerColumnVisibility'));
+        if (legacyColumnVisibility) {
+            appState.columnVisibility = legacyColumnVisibility;
+            localStorage.removeItem('jobTrackerColumnVisibility'); // Remove old key
+            saveSettings(); // Re-save under new structure
         }
     }
     

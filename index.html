@@ -250,15 +250,74 @@
         .column-toggle-popover label:hover {
             background-color: var(--muted);
         }
+        /* NEW: Styles for draggable column items */
+        .column-item {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius);
+            cursor: grab;
+            user-select: none;
+        }
+        .column-item:hover {
+            background-color: var(--muted);
+        }
+        .column-item.dragging {
+            opacity: 0.5;
+            background-color: var(--secondary);
+        }
+        .column-item .drag-handle {
+            cursor: grab;
+            margin-right: 0.5rem;
+            color: var(--muted-foreground);
+        }
+        .column-item .col-priority {
+            margin-right: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--muted-foreground);
+            width: 1rem;
+        }
+        .column-item label {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .column-item input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+
 
         /* Styles for pagination */
-        .pagination-btn {
+        .pagination-controls-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 0 0.5rem;
+        }
+        .pagination-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             background-color: var(--card);
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+        }
+        .pagination-btn {
+            background-color: var(--background);
             border: 1px solid var(--border);
             color: var(--foreground);
             padding: 0.25rem 0.5rem;
             border-radius: var(--radius);
             transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .pagination-btn:hover {
             background-color: var(--muted);
@@ -287,6 +346,36 @@
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
+        
+        /* NEW: Styles for Related Job Card */
+        .related-job-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+        .related-job-card {
+            background-color: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+        .related-job-card h4 {
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .related-job-card h4:hover {
+            color: var(--primary);
+        }
+        .related-job-card p {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+            margin-top: 0.5rem;
+        }
+
 
     </style>
 </head>
@@ -354,11 +443,12 @@
                                 </select>
                                 <!-- NEW: Column Visibility Toggle -->
                                 <div class="relative">
-                                    <button id="manage-columns-btn" class="view-toggle p-2 rounded-md leading-none bg-muted" title="Manage Columns">
+                                    <button id="manage-columns-btn" class="view-toggle p-2 rounded-md leading-none bg-muted flex items-center gap-2" title="Manage Columns">
                                         <span class="material-symbols-outlined">view_column</span>
+                                        <span class="text-sm font-medium">Manage Columns</span>
                                     </button>
-                                    <div id="manage-columns-popover" class="column-toggle-popover right-0 mt-2 w-48">
-                                        <!-- Checkboxes will be injected here -->
+                                    <div id="manage-columns-popover" class="column-toggle-popover right-0 mt-2 w-60">
+                                        <!-- Draggable column items will be injected here -->
                                     </div>
                                 </div>
                             </div>
@@ -383,18 +473,18 @@
                         </table>
                     </div>
                     <!-- NEW: Pagination Controls -->
-                    <div id="pagination-controls" class="flex justify-between items-center mt-4 px-2">
-                        <div class="flex items-center gap-2">
+                    <div id="pagination-controls" class="pagination-controls-container">
+                        <div class="pagination-group">
                             <span class="text-sm">Items per page:</span>
-                            <select id="items-per-page-select" class="editable-select text-sm w-auto">
+                            <select id="items-per-page-select" class="editable-select text-sm w-auto !m-0 !p-1">
                                 <option value="5">5</option>
                                 <option value="10" selected>10</option>
                                 <option value="20">20</option>
                                 <option value="50">50</option>
                             </select>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span id="page-info" class="text-sm">Page 1 of 1</span>
+                        <div class="pagination-group">
+                            <span id="page-info" class="text-sm px-2">Page 1 of 1</span>
                             <button id="prev-page-btn" class="pagination-btn"><span class="material-symbols-outlined">chevron_left</span></button>
                             <button id="next-page-btn" class="pagination-btn"><span class="material-symbols-outlined">chevron_right</span></button>
                         </div>
@@ -523,7 +613,7 @@
                         <!-- Right Column: Related Jobs -->
                         <div class="lg:w-2/3 bg-card p-6 rounded-lg shadow-md">
                             <h3 class="text-xl font-semibold mb-4">Related Jobs</h3>
-                            <div id="related-jobs-list" class="space-y-4">
+                            <div id="related-jobs-list" class="related-job-grid">
                                 <!-- Related jobs will be injected here -->
                             </div>
                         </div>
@@ -758,19 +848,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         autoCreateCompany: true,
         currentPage: 1,
         itemsPerPage: 10,
-        columnVisibility: {
-            title: true,
-            company_name: true,
-            location: true,
-            salary: true,
-            url: true,
-            description: true,
-            profile_id: true,
-            match_percentage: true,
-            status: true,
-            notes: true,
-            created_at: true,
-        }
+        // REPLACED: columnVisibility (object) with columnConfig (array) to store order
+        columnConfig: [
+            { key: 'title', label: 'Job Position', visible: true },
+            { key: 'company_name', label: 'Company', visible: true },
+            { key: 'location', label: 'Location', visible: true },
+            { key: 'salary', label: 'Salary (LPA)', visible: true },
+            { key: 'url', label: 'URL', visible: true },
+            { key: 'description', label: 'Description', visible: false },
+            { key: 'profile_id', label: 'Applied Profile', visible: true },
+            { key: 'match_percentage', label: 'Match %', visible: true },
+            { key: 'status', label: 'Status', visible: true },
+            { key: 'notes', label: 'Notes', visible: true },
+            { key: 'created_at', label: 'Date Saved', visible: true }
+        ]
     };
     
     // Column definitions
@@ -891,7 +982,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (viewId === 'logs-view') renderLogs();
         if (viewId === 'profiles-view') renderProfiles();
-        if (viewId === 'companies-view') renderCompaniesGrid(); // Render company grid
+        if (viewId === 'companies-view') {
+            companyGridContainer.classList.remove('hidden');
+            companyDetailContainer.classList.add('hidden');
+            renderCompaniesGrid(); // Render company grid
+        }
         logEvent('INFO', `Switched to view: ${viewId}`);
     }
 
@@ -1078,9 +1173,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tableHead = jobsTableContainer.querySelector('thead');
         tableHead.innerHTML = `
             <tr>
-                ${Object.keys(COLUMN_DEFINITIONS).map(key => `
-                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider ${appState.columnVisibility[key] ? '' : 'hidden'}" data-col-key="${key}">
-                        ${COLUMN_DEFINITIONS[key]}
+                ${appState.columnConfig.map(col => `
+                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider ${col.visible ? '' : 'hidden'}" data-col-key="${col.key}">
+                        ${col.label}
                     </th>
                 `).join('')}
             </tr>
@@ -1088,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 5. Render Table Body
         if (jobs.length === 0) {
-            const colSpan = Object.keys(appState.columnVisibility).filter(k => appState.columnVisibility[k]).length;
+            const colSpan = appState.columnConfig.filter(c => c.visible).length;
             jobsTableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center py-8 text-muted-foreground">No jobs in this category.</td></tr>`;
             return;
         }
@@ -1097,32 +1192,60 @@ document.addEventListener('DOMContentLoaded', async () => {
             const [id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage, notes, salary, url, description] = row;
             const profileOptionsHtml = `<option value="">- Select Profile -</option>` + profiles.map(p => `<option value="${p[0]}" ${p[0] === profile_id ? 'selected' : ''}>${p[1]}</option>`).join('');
 
+            // Create an object from the row data for easy access by key
+            const rowData = { id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage, notes, salary, url, description };
+            
             return `
                 <tr class="job-row" data-id="${id}">
-                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.title ? '' : 'hidden'}" data-field="details">${title}</td>
-                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.company_name ? '' : 'hidden'}" data-field="details">${company_name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.location ? '' : 'hidden'}" data-field="details">${location || 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.salary ? '' : 'hidden'}">${salary ? `₹${salary} LPA` : 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.url ? '' : 'hidden'}">
-                        ${url ? `<a href="${url}" target="_blank" class="text-primary hover:underline flex items-center"><span class="material-symbols-outlined text-sm mr-1">open_in_new</span>Link</a>` : 'N/A'}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate ${appState.columnVisibility.description ? '' : 'hidden'}" title="${description || ''}">${(description || '').substring(0, 30)}${description && description.length > 30 ? '...' : ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.profile_id ? '' : 'hidden'}">
-                        <select data-job-id="${id}" class="profile-select editable-select text-sm">
-                            ${profileOptionsHtml}
-                        </select>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center ${appState.columnVisibility.match_percentage ? '' : 'hidden'}">
-                        <div class="flex items-center justify-center space-x-2">
-                            <span>${match_percentage === null || match_percentage === undefined ? 'N/A' : `${match_percentage}%`}</span>
-                            <button title="Run AI Match Analysis" class="analyze-match-btn text-primary hover:text-accent" data-job-id="${id}" ${!profile_id ? 'disabled' : ''}>
-                                <span class="material-symbols-outlined text-lg">biotech</span>
-                            </button>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.status ? '' : 'hidden'}" data-field="status" data-current-status="${currentStatus}">${currentStatus}</td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate ${appState.columnVisibility.notes ? '' : 'hidden'}" data-field="notes" data-id="${id}" data-type="jobs" title="${notes || 'Click to add notes'}">${notes || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap ${appState.columnVisibility.created_at ? '' : 'hidden'}" data-field="details">${new Date(created_at).toLocaleDateString()}</td>
+                    ${appState.columnConfig.map(col => {
+                        // Handle each cell based on its column key
+                        let content = '';
+                        switch(col.key) {
+                            case 'title':
+                            case 'company_name':
+                            case 'location':
+                                content = `<td class="px-6 py-4 whitespace-nowrap" data-field="details">${rowData[col.key] || 'N/A'}</td>`;
+                                break;
+                            case 'salary':
+                                content = `<td class="px-6 py-4 whitespace-nowrap">${rowData.salary ? `₹${rowData.salary} LPA` : 'N/A'}</td>`;
+                                break;
+                            case 'url':
+                                content = `<td class="px-6 py-4 whitespace-nowrap">
+                                    ${rowData.url ? `<a href="${rowData.url}" target="_blank" class="text-primary hover:underline flex items-center"><span class="material-symbols-outlined text-sm mr-1">open_in_new</span>Link</a>` : 'N/A'}
+                                </td>`;
+                                break;
+                            case 'description':
+                                content = `<td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${rowData.description || ''}">${(rowData.description || '').substring(0, 30)}${rowData.description && rowData.description.length > 30 ? '...' : ''}</td>`;
+                                break;
+                            case 'profile_id':
+                                content = `<td class="px-6 py-4 whitespace-nowrap">
+                                    <select data-job-id="${id}" class="profile-select editable-select text-sm">
+                                        ${profileOptionsHtml}
+                                    </select>
+                                </td>`;
+                                break;
+                            case 'match_percentage':
+                                content = `<td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <span>${rowData.match_percentage === null || rowData.match_percentage === undefined ? 'N/A' : `${rowData.match_percentage}%`}</span>
+                                        <button title="Run AI Match Analysis" class="analyze-match-btn text-primary hover:text-accent" data-job-id="${id}" ${!rowData.profile_id ? 'disabled' : ''}>
+                                            <span class="material-symbols-outlined text-lg">biotech</span>
+                                        </button>
+                                    </div>
+                                </td>`;
+                                break;
+                            case 'status':
+                                content = `<td class="px-6 py-4 whitespace-nowrap" data-field="status" data-current-status="${rowData.currentStatus}">${rowData.currentStatus}</td>`;
+                                break;
+                            case 'notes':
+                                content = `<td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="jobs" title="${rowData.notes || 'Click to add notes'}">${rowData.notes || ''}</td>`;
+                                break;
+                            case 'created_at':
+                                content = `<td class="px-6 py-4 whitespace-nowrap" data-field="details">${new Date(rowData.created_at).toLocaleDateString()}</td>`;
+                                break;
+                        }
+                        return col.visible ? content : content.replace('<td ', '<td class="hidden" ');
+                    }).join('')}
                 </tr>`;
         }).join('');
     }
@@ -1134,25 +1257,93 @@ document.addEventListener('DOMContentLoaded', async () => {
         nextPageBtn.disabled = appState.currentPage >= totalPages;
     }
 
-    // NEW: Render Column Toggles
+    // NEW: Render Column Toggles - Now with drag and drop
     function renderColumnToggles() {
-        manageColumnsPopover.innerHTML = Object.keys(COLUMN_DEFINITIONS).map(key => `
-            <label class="flex items-center space-x-2">
-                <input type="checkbox" data-col-key="${key}" class="h-4 w-4 rounded border-border text-primary focus:ring-primary" ${appState.columnVisibility[key] ? 'checked' : ''}>
-                <span class="text-sm">${COLUMN_DEFINITIONS[key]}</span>
-            </label>
+        manageColumnsPopover.innerHTML = appState.columnConfig.map((col, index) => `
+            <div class="column-item" draggable="true" data-col-key="${col.key}">
+                <span class="col-priority">${index + 1}</span>
+                <span class="material-symbols-outlined drag-handle">drag_indicator</span>
+                <label>
+                    <input type="checkbox" data-col-key="${col.key}" class="h-4 w-4 rounded border-border text-primary focus:ring-primary" ${col.visible ? 'checked' : ''}>
+                    <span class="text-sm">${col.label}</span>
+                </label>
+            </div>
         `).join('');
 
-        // Add event listeners
+        // Add checkbox event listeners
         manageColumnsPopover.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', (e) => {
                 const key = e.target.dataset.colKey;
-                appState.columnVisibility[key] = e.target.checked;
-                localStorage.setItem('jobTrackerColumnVisibility', JSON.stringify(appState.columnVisibility));
+                const colConfig = appState.columnConfig.find(c => c.key === key);
+                if (colConfig) {
+                    colConfig.visible = e.target.checked;
+                }
+                saveSettings(); // Save on toggle
                 refreshJobsView(); // Re-render the table
             });
         });
+
+        // Add drag/drop listeners
+        setupColumnDragAndDrop();
     }
+    
+    // NEW: Drag and Drop for Columns
+    function setupColumnDragAndDrop() {
+        let draggedItem = null;
+
+        manageColumnsPopover.querySelectorAll('.column-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedItem = item;
+                setTimeout(() => item.classList.add('dragging'), 0);
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            
+            item.addEventListener('dragend', () => {
+                draggedItem?.classList.remove('dragging');
+                draggedItem = null;
+            });
+
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const target = e.currentTarget;
+                if (target !== draggedItem && draggedItem) {
+                    // Get bounding box of target
+                    const rect = target.getBoundingClientRect();
+                    // Get vertical center
+                    const midY = rect.top + rect.height / 2;
+                    if (e.clientY < midY) {
+                        target.parentNode.insertBefore(draggedItem, target);
+                    } else {
+                        target.parentNode.insertBefore(draggedItem, target.nextSibling);
+                    }
+                }
+            });
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (draggedItem) {
+                    draggedItem.classList.remove('dragging');
+                    
+                    // Update the appState.columnConfig array based on the new DOM order
+                    const newConfig = [];
+                    manageColumnsPopover.querySelectorAll('.column-item').forEach(el => {
+                        const key = el.dataset.colKey;
+                        const config = appState.columnConfig.find(c => c.key === key);
+                        if (config) {
+                            newConfig.push(config);
+                        }
+                    });
+                    appState.columnConfig = newConfig;
+
+                    // Re-render popover to update numbers and re-render table
+                    renderColumnToggles(); 
+                    refreshJobsView();
+                    saveSettings();
+                }
+            });
+        });
+    }
+
 
     // NEW: renderJobsKanban (Kanban View) - Now with Drag-and-Drop
     async function renderJobsKanban() {
@@ -1338,20 +1529,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             return acc;
         }, {}) : {};
 
-        const jobsRes = executeQuery("SELECT id, title, status, notes, profile_id FROM jobs WHERE company_name = ? ORDER BY created_at DESC", [name]);
+        const jobsRes = executeQuery("SELECT id, title, status, location, salary, created_at, match_percentage, profile_id FROM jobs WHERE company_name = ? ORDER BY created_at DESC", [name]);
         const jobs = jobsRes.length > 0 ? jobsRes[0].values : [];
 
         if (jobs.length === 0) {
             relatedJobsList.innerHTML = `<p class="text-muted-foreground">No jobs found for this company.</p>`;
         } else {
-            relatedJobsList.innerHTML = jobs.map(([jobId, title, status, notes, profile_id]) => `
-                <div class="p-3 bg-background rounded-lg border border-border">
-                    <div class="flex justify-between items-center">
-                        <h4 class="font-semibold text-sm cursor-pointer" data-job-id="${jobId}">${title}</h4>
-                        <span class="text-xs font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">${status}</span>
+            // UPDATED: To render grid of cards with requested fields
+            relatedJobsList.innerHTML = jobs.map(([jobId, title, status, location, salary, created_at, match_percentage, profile_id]) => `
+                <div class="related-job-card">
+                    <div class="flex justify-between items-start">
+                        <h4 class="text-sm" data-job-id="${jobId}">${title}</h4>
+                        <span class="text-xs font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full whitespace-nowrap">${status}</span>
                     </div>
-                    <p class="text-sm text-muted-foreground mt-1"><strong>Profile:</strong> ${profilesMap[profile_id] || 'N/A'}</p>
-                    <p class="text-sm text-muted-foreground mt-1 truncate"><strong>Notes:</strong> ${notes || 'N/A'}</p>
+                    <p><span class="material-symbols-outlined !text-sm">location_on</span> ${location || 'N/A'}</p>
+                    <p><span class="material-symbols-outlined !text-sm">paid</span> ${salary ? `₹${salary} LPA` : 'N/A'}</p>
+                    <p><span class="material-symbols-outlined !text-sm">badge</span> ${profilesMap[profile_id] || 'N/A'}</p>
+                    <p><span class="material-symbols-outlined !text-sm">percent</span> ${match_percentage !== null ? `${match_percentage}% Match` : 'N/A'}</p>
+                    <p><span class="material-symbols-outlined !text-sm">calendar_today</span> ${new Date(created_at).toLocaleDateString()}</p>
                 </div>
             `).join('');
 
@@ -1372,14 +1567,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleEditCompany(e) {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target).entries());
+        
+        // FIX: Get the old name *before* updating
+        const oldNameRes = executeQuery("SELECT name FROM companies WHERE id = ?", [data.id]);
+        if (!oldNameRes || oldNameRes.length === 0) {
+             logEvent('ERROR', `Could not find company with ID ${data.id} to update.`);
+             showStatus('Error updating company.', 'error');
+             return;
+        }
+        const oldName = oldNameRes[0].values[0][0];
+
+        // 1. Update the company
         executeQuery("UPDATE companies SET name = ?, industry = ?, location = ?, website = ?, linkedin = ?, notes = ? WHERE id = ?", 
             [data.name, data.industry, data.location, data.website, data.linkedin, data.notes, data.id]);
         
-        // Also update any jobs that had the old name
-        const oldNameRes = executeQuery("SELECT name FROM companies WHERE id = ?", [data.id]);
-        const oldName = oldNameRes[0].values[0][0];
+        // 2. If name changed, update all associated jobs
         if (oldName !== data.name) {
             executeQuery("UPDATE jobs SET company_name = ? WHERE company_name = ?", [data.name, oldName]);
+            logEvent('INFO', `Synced job names from '${oldName}' to '${data.name}'`);
         }
 
         logEvent('SUCCESS', `Updated company: ${data.name}`);
@@ -1711,12 +1916,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             executeQuery("UPDATE jobs SET status = ? WHERE id = ?", [newStatus, jobId]);
             logEvent('INFO', `Updated status for job ID ${jobId} to ${newStatus}`);
             showStatus('Status updated.', 'success');
-            renderJobs(currentJobViewStatus); // Just re-render table, it will disappear from this view
+            renderJobs(currentJobViewStatus); // Re-render the jobs list
         };
         select.addEventListener('blur', saveChange);
         select.addEventListener('change', saveChange);
     }
-    
+
     // --- Auto Backup & Persistence ---
     function autoBackupDatabase() {
         try {
@@ -1747,7 +1952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             llmApiUrl: apiUrl,
             autoCreateCompany: appState.autoCreateCompany,
             itemsPerPage: appState.itemsPerPage, // Save pagination setting
-            columnVisibility: appState.columnVisibility // Save column visibility
+            columnConfig: appState.columnConfig // Save NEW column config
         };
         localStorage.setItem('jobTrackerSettings', JSON.stringify(settings));
         logEvent('SUCCESS', 'Settings saved.');
@@ -1767,21 +1972,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             appState.itemsPerPage = settings.itemsPerPage || 10;
             itemsPerPageSelect.value = appState.itemsPerPage;
             
-            if (settings.columnVisibility) {
-                appState.columnVisibility = settings.columnVisibility;
+            // NEW: Load columnConfig
+            if (settings.columnConfig) {
+                appState.columnConfig = settings.columnConfig;
+                // Ensure all keys from COLUMN_DEFINITIONS exist in the loaded config
+                const loadedKeys = appState.columnConfig.map(c => c.key);
+                Object.keys(COLUMN_DEFINITIONS).forEach(key => {
+                    if (!loadedKeys.includes(key)) {
+                        appState.columnConfig.push({
+                            key: key,
+                            label: COLUMN_DEFINITIONS[key],
+                            visible: false // Default new columns to hidden
+                        });
+                    }
+                });
+                // Ensure all labels are up-to-date
+                appState.columnConfig.forEach(col => {
+                    col.label = COLUMN_DEFINITIONS[col.key];
+                });
             }
-            // Ensure all keys exist in visibility state, even if new ones were added
-            Object.keys(COLUMN_DEFINITIONS).forEach(key => {
-                if (appState.columnVisibility[key] === undefined) {
-                    appState.columnVisibility[key] = true;
-                }
-            });
         }
         
-        // Load legacy visibility settings if they exist
+        // Load legacy visibility settings if they exist and convert them
         const legacyColumnVisibility = JSON.parse(localStorage.getItem('jobTrackerColumnVisibility'));
         if (legacyColumnVisibility) {
-            appState.columnVisibility = legacyColumnVisibility;
+            // This is the old format (object of booleans)
+            // We just update the 'visible' property in our new array structure
+            appState.columnConfig.forEach(col => {
+                if (legacyColumnVisibility[col.key] !== undefined) {
+                    col.visible = legacyColumnVisibility[col.key];
+                }
+            });
             localStorage.removeItem('jobTrackerColumnVisibility'); // Remove old key
             saveSettings(); // Re-save under new structure
         }

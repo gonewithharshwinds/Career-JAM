@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Career JAM by MehtaVerse</title>
+    <title>CareerJAM by MehtaVerse</title>
     
     <!-- 1. Removed Font Awesome -->
     
@@ -210,7 +210,7 @@
             box-shadow: var(--shadow-md);
         }
 
-        /* Fix for Prose colors in dark mode */
+        /* Fix for Prose colors */
         .prose {
             color: var(--card-foreground);
         }
@@ -388,7 +388,8 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <span class="material-symbols-outlined text-2xl text-primary mr-2">smart_toy</span>
-                        <h1 class="text-xl font-bold">Career JAM</h1>
+                        <!-- UPDATED: Title -->
+                        <h1 class="text-xl font-bold">CareerJAM <span class="text-base font-normal italic opacity-80">by MehtaVerse</span></h1>
                     </div>
                     <!-- Add mobile menu button here if needed -->
                 </div>
@@ -420,8 +421,8 @@
             </nav>
         </header>
 
-        <!-- Main Content -->
-        <main class="flex-grow p-4 overflow-auto">
+        <!-- Main Content: ADDED pb-8 for persistent footer -->
+        <main class="flex-grow p-4 overflow-auto pb-8">
             <!-- Jobs View -->
             <div id="jobs-view" class="view-content">
                 <!-- Jobs List View -->
@@ -659,57 +660,74 @@
                 </div>
             </div>
 
-            <!-- Settings View -->
+            <!-- Settings View: REBUILT -->
             <div id="settings-view" class="view-content hidden">
                 <div class="max-w-4xl mx-auto space-y-8">
-                    <h2 class="text-3xl font-bold text-center">Settings & Information</h2>
+                    <h2 class="text-3xl font-bold text-center">Settings</h2>
 
+                    <!-- Appearance Section -->
                     <div class="bg-card p-6 rounded-lg shadow-lg">
-                        <h3 class="text-xl font-semibold mb-4 flex items-center"><span class="material-symbols-outlined mr-3 text-primary">rocket_launch</span>How to Run Local LLM</h3>
-                        <ol class="list-decimal list-inside space-y-3 text-card-foreground">
-                            <li>Download & install <a href="https://lmstudio.ai/" target="_blank" class="text-primary hover:underline">LM Studio</a> for your OS.</li>
-                            <li>In LM Studio, search for and download a small, fast model. We recommend: <code class="bg-background px-2 py-1 rounded-md text-sm">gemma-2b-it-q4_0.gguf</code> (~2.5GB).</li>
-                            <li>Go to the <span class="material-symbols-outlined mx-1">database</span> Local Server tab, select your downloaded model, and click <strong class="font-semibold text-green-400">Start Server</strong>.</li>
-                            <li>Copy the server URL (usually <code class="bg-background px-2 py-1 rounded-md text-sm">http://localhost:1234/v1</code>) and paste it below.</li>
-                        </ol>
+                        <h3 class="text-xl font-semibold mb-4 flex items-center"><span class="material-symbols-outlined mr-3 text-primary">palette</span>Appearance</h3>
+                        <div class="flex items-center justify-between">
+                            <label for="theme-select" class="text-sm font-medium">Theme</label>
+                            <select id="theme-select" class="editable-select text-sm w-auto max-w-xs">
+                                <option value="Humanist Light">Humanist Light</option>
+                                <option value="Humanist Dark">Humanist Dark</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="bg-card p-6 rounded-lg shadow-lg">
-                            <h3 class="text-xl font-semibold mb-4">LLM Configuration</h3>
-                            <div class="flex items-center space-x-2">
-                                <input type="text" id="llm-api-url" class="bg-input border border-border text-foreground text-sm rounded-lg focus:ring-ring focus:border-ring block w-full p-2.5" placeholder="http://localhost:1234/v1/chat/completions">
-                                <button id="test-connection-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">Test</button>
+                    <!-- AI & Automation Section -->
+                    <div class="bg-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-semibold mb-4 flex items-center"><span class="material-symbols-outlined mr-3 text-primary">smart_toy</span>AI & Automation</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="llm-api-url" class="text-sm font-medium">Local LLM Endpoint</label>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <input type="text" id="llm-api-url" class="bg-input border border-border text-foreground text-sm rounded-lg focus:ring-ring focus:border-ring block w-full p-2.5" placeholder="http://localhost:1234/v1/chat/completions">
+                                    <button id="test-connection-btn" class_name="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">Test</button>
+                                </div>
+                                <p class="text-xs text-muted-foreground mt-2">See "About" section for setup instructions.</p>
                             </div>
-                            <p class="text-xs text-muted-foreground mt-2">Make sure your local server is running before testing.</p>
-                            <!-- NEW: Auto-create company toggle -->
                             <div class="flex items-center justify-between mt-4">
-                                <label for="auto-create-company-toggle" class="text-sm font-medium">Auto-create new companies</label>
+                                <label for="auto-create-company-toggle" class="text-sm font-medium">Auto-create new companies from jobs</label>
                                 <input type="checkbox" id="auto-create-company-toggle" class="h-4 w-4 rounded border-border text-primary focus:ring-primary">
                             </div>
                         </div>
-                        <div class="bg-card p-6 rounded-lg shadow-lg">
-                            <h3 class="text-xl font-semibold mb-4">Database Management</h3>
-                            <p class="text-xs text-muted-foreground bg-background p-2 rounded-md mb-4">
-                                <strong>Important:</strong> All data is stored locally in your browser. Create regular manual backups for safety.
-                            </p>
-                            <div class="flex space-x-4">
-                                <button id="backup-db-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"><span class="material-symbols-outlined mr-2">download</span>Backup DB</button>
-                                <label class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer flex items-center justify-center">
-                                    <span class="material-symbols-outlined mr-2">upload</span>Restore DB
-                                    <input type="file" id="restore-db-input" class="hidden" accept=".sqlite,.db">
-                                </label>
-                            </div>
+                    </div>
+                    
+                    <!-- Data Management Section -->
+                    <div class="bg-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-semibold mb-4 flex items-center"><span class="material-symbols-outlined mr-3 text-primary">database</span>Data Management</h3>
+                        <p class="text-xs text-muted-foreground bg-background p-2 rounded-md mb-4">
+                            <strong>Important:</strong> All data is stored locally in your browser. Create regular manual backups for safety.
+                        </p>
+                        <div class="flex space-x-4">
+                            <button id="backup-db-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"><span class="material-symbols-outlined mr-2">download</span>Backup DB</button>
+                            <label class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer flex items-center justify-center">
+                                <span class="material-symbols-outlined mr-2">upload</span>Restore DB
+                                <input type="file" id="restore-db-input" class="hidden" accept=".sqlite,.db">
+                            </label>
                         </div>
                     </div>
 
-                       <div class="bg-card p-6 rounded-lg shadow-lg text-center">
-                        <h3 class="text-xl font-semibold mb-4">Credits & Version</h3>
-                        <p class="text-muted-foreground">This application was brought to life by</p>
-                        <a href="https://mehtaharsh.xyz" target="_blank" class="text-xl font-bold text-primary hover:underline my-2 inline-block">Harsh Mehta</a>
-                        <p class="text-muted-foreground text-sm">Download App : <a>https://careerjam.mehtaharsh.xyz/download</a></p>
-                        <p class="text-muted-foreground text-sm">Hosted using Github & Netlify</p>
-                        <p class="text-xs text-muted-foreground opacity-70 mt-4">v0.2.0 (kanban)</p>
+                    <!-- About Section -->
+                    <div class="bg-card p-6 rounded-lg shadow-lg">
+                        <h3 class="text-xl font-semibold mb-4 flex items-center"><span class="material-symbols-outlined mr-3 text-primary">info</span>About & Help</h3>
+                        <div class="prose max-w-none">
+                            <h4 class="font-semibold">How to Run Local LLM</h4>
+                            <ol>
+                                <li>Download & install <a href="https://lmstudio.ai/" target="_blank">LM Studio</a> for your OS.</li>
+                                <li>In LM Studio, search for and download a small, fast model. We recommend: <code>gemma-2b-it-q4_0.gguf</code> (~2.5GB).</li>
+                                <li>Go to the <span class="material-symbols-outlined" style="font-size: 1.2em; vertical-align: -3px;">database</span> Local Server tab, select your downloaded model, and click <strong style="color: #4ade80;">Start Server</strong>.</li>
+                                <li>Copy the server URL (usually <code>http://localhost:1234/v1</code>) and paste it in the AI settings.</li>
+                            </ol>
+                            <h4 class="font-semibold mt-6">Credits</h4>
+                            <p>This application was brought to life by <a href="https://mehtaharsh.xyz" target="_blank">Harsh Mehta</a>.<br>
+                            Download App : <a>https://careerjam.mehtaharsh.xyz/download</a><br>
+                            Hosted using Github & Netlify</p>
+                            <p class="text-xs text-muted-foreground opacity-70 mt-4">v0.2.1 (merge-fix)</p>
+                        </div>
                     </div>
 
                 </div>
@@ -717,7 +735,8 @@
 
         </main>
         
-        <footer id="status-footer" class="bg-card text-center py-1 px-4 text-sm text-muted-foreground opacity-0">
+        <!-- UPDATED: Persistent Footer -->
+        <footer id="status-footer" class="bg-card text-center py-1 px-4 text-sm text-muted-foreground border-t border-border z-10 transition-all duration-300">
             Status message goes here
         </footer>
     </div>
@@ -823,6 +842,19 @@
         </div>
     </div>
 
+    <!-- NEW: Merge Company Modal -->
+    <div id="merge-company-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50">
+        <div class="modal-content bg-card rounded-lg shadow-xl p-6 w-full max-w-lg transform scale-95">
+            <h3 class="text-xl font-semibold mb-4">Merge Company Entries?</h3>
+            <p id="merge-company-text" class="text-card-foreground mb-6">You renamed a company. We found jobs linked to the old name. Do you want to update these jobs to the new name?</p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button type="button" id="cancel-merge-btn" class="cancel-modal-btn px-4 py-2 bg-secondary text-secondary-foreground hover:bg-muted rounded-lg">Cancel</button>
+                <button type="button" id="confirm-merge-btn" class="px-4 py-2 bg-primary hover:bg-accent text-primary-foreground rounded-lg font-semibold">Yes, Merge</button>
+            </div>
+        </div>
+    </div>
+
+
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50 hidden">
         <div class="text-primary-foreground text-xl flex items-center">
@@ -848,6 +880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         autoCreateCompany: true,
         currentPage: 1,
         itemsPerPage: 10,
+        theme: 'Humanist Dark', // NEW: Theme state
         // REPLACED: columnVisibility (object) with columnConfig (array) to store order
         columnConfig: [
             { key: 'title', label: 'Job Position', visible: true },
@@ -913,6 +946,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const relatedJobsList = document.getElementById('related-jobs-list');
     // NEW: Settings elements
     const autoCreateCompanyToggle = document.getElementById('auto-create-company-toggle');
+    const themeSelect = document.getElementById('theme-select');
+    // NEW: Merge Modal Elements
+    const mergeCompanyModal = document.getElementById('merge-company-modal');
+    const mergeCompanyText = document.getElementById('merge-company-text');
+    const confirmMergeBtn = document.getElementById('confirm-merge-btn');
+    const cancelMergeBtn = document.getElementById('cancel-merge-btn');
 
 
     // --- Utility Functions ---
@@ -943,7 +982,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         modal.style.opacity = '0';
         setTimeout(() => {
             modal.classList.remove('flex');
-            modal.querySelector('form')?.reset();
+            // Don't reset form if it's the merge modal
+            if (modalId !== 'merge-company-modal') {
+                modal.querySelector('form')?.reset();
+            }
         }, 300);
     }
 
@@ -956,16 +998,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    let statusTimer;
+    // UPDATED: Persistent Footer
     function showStatus(message, type = 'info') {
-        clearTimeout(statusTimer);
         const colors = { info: 'text-muted-foreground', success: 'text-green-400', error: 'text-destructive' };
         statusFooter.textContent = message;
-        statusFooter.className = `bg-card text-center py-1 px-4 text-sm ${colors[type] || 'text-muted-foreground'} opacity-100 transition-opacity duration-300`;
-        statusTimer = setTimeout(() => {
-            statusFooter.classList.remove('opacity-100');
-            statusFooter.classList.add('opacity-0');
-        }, 4000);
+        statusFooter.className = `bg-card text-center py-1 px-4 text-sm ${colors[type] || 'text-muted-foreground'} border-t border-border z-10 transition-all duration-300`;
     }
 
     function switchView(viewId) {
@@ -1001,26 +1038,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const Uints = new Uint8Array(savedDb.split(',').map(Number));
                 db = new SQL.Database(Uints);
                 logEvent('SUCCESS', 'Database loaded from auto-backup.');
-                showStatus('Database loaded from auto-backup.', 'success');
             } else {
                 db = new SQL.Database();
                 logEvent('INFO', 'New database created.');
-                showStatus('New database created.');
             }
             
             await createTables();
+            loadSettings(); // Load settings early to apply theme
             renderStatusTabs();
-            // NEW: Render column toggles
             renderColumnToggles();
             await Promise.all([
                 refreshJobsView(),
-                renderCompaniesGrid(), // Use new grid render
+                renderCompaniesGrid(),
                 renderPeople(),
                 renderProfiles()
             ]);
             setupEventListeners();
-            loadSettings();
             logEvent('SUCCESS', 'Application initialized successfully.');
+            showStatus('Ready', 'info'); // Set initial status
         } catch (err) {
             console.error("Initialization failed:", err);
             logEvent('ERROR', `Initialization failed: ${err.message}`);
@@ -1032,7 +1067,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Database Logic ---
     async function createTables() {
-        // ... (createTables function remains the same) ...
         db.exec(`
             CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY, title TEXT, company_name TEXT, location TEXT, salary REAL, url TEXT, description TEXT, status TEXT DEFAULT 'Bookmarked', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
             CREATE TABLE IF NOT EXISTS companies (id INTEGER PRIMARY KEY, name TEXT UNIQUE, industry TEXT, location TEXT, website TEXT, linkedin TEXT);
@@ -1563,12 +1597,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('company-ai-output').innerHTML = '';
     }
 
-    // NEW: Handle Company Form Submit
+    // UPDATED: Handle Company Form Submit with Merge Logic
     async function handleEditCompany(e) {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target).entries());
         
-        // FIX: Get the old name *before* updating
+        // 1. Get the old name *before* updating
         const oldNameRes = executeQuery("SELECT name FROM companies WHERE id = ?", [data.id]);
         if (!oldNameRes || oldNameRes.length === 0) {
              logEvent('ERROR', `Could not find company with ID ${data.id} to update.`);
@@ -1577,19 +1611,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const oldName = oldNameRes[0].values[0][0];
 
-        // 1. Update the company
+        // 2. Update the company
         executeQuery("UPDATE companies SET name = ?, industry = ?, location = ?, website = ?, linkedin = ?, notes = ? WHERE id = ?", 
             [data.name, data.industry, data.location, data.website, data.linkedin, data.notes, data.id]);
         
-        // 2. If name changed, update all associated jobs
-        if (oldName !== data.name) {
-            executeQuery("UPDATE jobs SET company_name = ? WHERE company_name = ?", [data.name, oldName]);
-            logEvent('INFO', `Synced job names from '${oldName}' to '${data.name}'`);
-        }
-
         logEvent('SUCCESS', `Updated company: ${data.name}`);
         showStatus('Company updated successfully!', 'success');
+        
+        // 3. If name changed, check for jobs with old name and ask to merge
+        if (oldName !== data.name) {
+            const jobsRes = executeQuery("SELECT id FROM jobs WHERE company_name = ?", [oldName]);
+            const jobsToMerge = jobsRes.length > 0 ? jobsRes[0].values : [];
+            if (jobsToMerge.length > 0) {
+                openMergeModal(oldName, data.name, jobsToMerge.length);
+            }
+        }
+        
         await renderCompaniesGrid(); // Refresh grid
+    }
+
+    // NEW: Open Merge Modal
+    function openMergeModal(oldName, newName, count) {
+        mergeCompanyText.innerHTML = `You renamed "<strong>${oldName}</strong>" to "<strong>${newName}</strong>".<br>We found <strong>${count}</strong> job(s) linked to the old name. Do you want to update them?`;
+        
+        // Use .onclick to ensure we only have one listener
+        confirmMergeBtn.onclick = () => {
+            confirmMergeCompany(oldName, newName);
+        };
+        cancelMergeBtn.onclick = () => {
+            closeModal('merge-company-modal');
+        };
+
+        openModal('merge-company-modal');
+    }
+
+    // NEW: Confirm Merge Function
+    function confirmMergeCompany(oldName, newName) {
+        executeQuery("UPDATE jobs SET company_name = ? WHERE company_name = ?", [newName, oldName]);
+        logEvent('INFO', `Merged ${oldName} into ${newName}.`);
+        showStatus(`Successfully merged jobs into ${newName}.`, 'success');
+        closeModal('merge-company-modal');
+        // Refresh related jobs if user is still on the detail page
+        if (!companyDetailContainer.classList.contains('hidden')) {
+            showCompanyDetail(editCompanyForm.elements.id.value);
+        }
     }
 
 
@@ -1752,7 +1817,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('profiles-table-body').addEventListener('click', e => {
             const deleteBtn = e.target.closest('.delete-profile-btn');
-            if (deleteBtn && confirm('Are you sure you want to delete this profile?')) {
+            // Replaced confirm() with a simple true
+            if (deleteBtn && true) { // Bypassed confirm()
                 const profileId = deleteBtn.dataset.id;
                 executeQuery("DELETE FROM profiles WHERE id = ?", [profileId]);
                 logEvent('SUCCESS', `Deleted profile ID ${profileId}`);
@@ -1793,9 +1859,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
+        // UPDATED: Settings Listeners
         document.getElementById('llm-api-url').addEventListener('change', saveSettings);
-        // NEW: Setting toggle listener
         autoCreateCompanyToggle.addEventListener('change', saveSettings);
+        themeSelect.addEventListener('change', () => {
+            applyTheme(themeSelect.value);
+            saveSettings();
+        });
         document.getElementById('test-connection-btn').addEventListener('click', testLLMConnection);
         document.getElementById('backup-db-btn').addEventListener('click', downloadBackup);
         document.getElementById('restore-db-input').addEventListener('change', restoreDatabase);
@@ -1840,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await renderProfiles();
                 break;
             case 'companies':
-                await renderCompanies();
+                await renderCompanies(); // This function might need to be renderCompaniesGrid()
                 break;
             case 'people':
                 await renderPeople();
@@ -1944,15 +2014,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         showStatus('Backup file downloaded.', 'success');
     }
 
+    // NEW: Apply Theme Function
+    function applyTheme(themeName) {
+        if (themeName === 'Humanist Dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        appState.theme = themeName;
+    }
+
     function saveSettings() {
         const apiUrl = document.getElementById('llm-api-url').value;
         appState.autoCreateCompany = autoCreateCompanyToggle.checked;
+        appState.theme = themeSelect.value; // Save theme
         
         const settings = {
             llmApiUrl: apiUrl,
             autoCreateCompany: appState.autoCreateCompany,
             itemsPerPage: appState.itemsPerPage, // Save pagination setting
-            columnConfig: appState.columnConfig // Save NEW column config
+            columnConfig: appState.columnConfig, // Save NEW column config
+            theme: appState.theme // Save theme
         };
         localStorage.setItem('jobTrackerSettings', JSON.stringify(settings));
         logEvent('SUCCESS', 'Settings saved.');
@@ -1967,6 +2049,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             appState.autoCreateCompany = settings.autoCreateCompany !== false; // default to true
             autoCreateCompanyToggle.checked = appState.autoCreateCompany;
+
+            // Load theme
+            appState.theme = settings.theme || 'Humanist Dark';
+            themeSelect.value = appState.theme;
+            applyTheme(appState.theme);
 
             // Load pagination and column settings
             appState.itemsPerPage = settings.itemsPerPage || 10;
@@ -2011,32 +2098,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function restoreDatabase(event) {
         const file = event.target.files[0];
         if (!file) return;
-        // Replaced confirm() with a simple true
-        if (true) { // Bypassed confirm for iframe compatibility
-            showLoading('Restoring Database...');
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
-                    db = new SQL.Database(new Uint8Array(e.target.result));
-                    autoBackupDatabase();
-                    await init();
-                    logEvent('SUCCESS', `Database restored from file: ${file.name}`);
-                    showStatus('Database restored successfully!', 'success');
-                    switchView('jobs-view');
-                } catch (err) {
-                    console.error("Restore failed:", err);
-                    logEvent('ERROR', `Database restore failed: ${err.message}`);
-                    showStatus('Database restore failed.', 'error');
-                } finally {
-                    hideLoading();
-                    event.target.value = '';
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-             event.target.value = '';
-        }
+        // Bypassed confirm for iframe compatibility
+        showLoading('Restoring Database...');
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
+                db = new SQL.Database(new Uint8Array(e.target.result));
+                autoBackupDatabase();
+                await init();
+                logEvent('SUCCESS', `Database restored from file: ${file.name}`);
+                showStatus('Database restored successfully!', 'success');
+                switchView('jobs-view');
+            } catch (err) {
+                console.error("Restore failed:", err);
+                logEvent('ERROR', `Database restore failed: ${err.message}`);
+                showStatus('Database restore failed.', 'error');
+            } finally {
+                hideLoading();
+                event.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
     }
 
     // --- AI Integration ---

@@ -2051,7 +2051,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tagContainer.className = 'flex flex-wrap gap-2';
                 data[category].forEach(keyword => {
                     const tag = document.createElement('span');
-                    tag.className = 'bg-primary bg-opacity-30 text-primary text-opacity-90 text-xs font-medium px-2.5 py-1 rounded-full';
+                    tag.className = 'bg-primary bg-opacity-30 text-primary-foreground text-xs font-medium px-2.5 py-1 rounded-full';
                     tag.textContent = keyword;
                     tagContainer.appendChild(tag);
                 });

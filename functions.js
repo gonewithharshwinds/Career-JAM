@@ -135,6 +135,14 @@ async function updateCompany(company) {
     return await updateItem('companies', company);
 }
 
+// NEW: Function to delete a company
+async function deleteCompany(id) {
+    // Note: This only deletes the company.
+    // Related jobs will now show 'Unknown Company' unless you update them.
+    return await deleteItem('companies', id);
+}
+
+
 async function getAllCompanies() {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction('companies', 'readonly');
@@ -155,6 +163,12 @@ async function getProfile(id) {
     return await getItem('profiles', id);
 }
 
+// NEW: Function to update a profile
+async function updateProfile(profile) {
+    return await updateItem('profiles', profile);
+}
+
+
 async function deleteProfile(id) {
     return await deleteItem('profiles', id);
 }
@@ -169,15 +183,25 @@ async function getAllProfiles() {
     });
 }
 
-// NEW: Helper function to update profile notes
-async function updateProfile(profile) {
-    return await updateItem('profiles', profile);
-}
-
 // --- People ---
 
 async function addPerson(person) {
     return await addItem('people', person);
+}
+
+// NEW: Function to get a single person
+async function getPerson(id) {
+    return await getItem('people', id);
+}
+
+// NEW: Function to update a person
+async function updatePerson(person) {
+    return await updateItem('people', person);
+}
+
+// NEW: Function to delete a person
+async function deletePerson(id) {
+    return await deleteItem('people', id);
 }
 
 async function getAllPeople() {
@@ -211,6 +235,11 @@ async function getJob(id) {
 
 async function updateJob(job) {
     return await updateItem('jobs', job);
+}
+
+// NEW: Function to delete a job
+async function deleteJob(id) {
+    return await deleteItem('jobs', id);
 }
 
 async function updateJobNotes(id, notes) {
@@ -274,10 +303,6 @@ async function getPaginatedJobs(status, sortBy, page, itemsPerPage) {
         const results = [];
         let skipped = 0;
         const skipCount = (page - 1) * itemsPerPage;
-
-        // Note: This implementation is complex because IndexedDB cursors
-        // are the only way to do sorting + filtering + pagination.
-        // We filter by status *manually* if not sorting by it.
 
         const range = effectiveSortKey === 'status' ? IDBKeyRange.only(status) : null;
         const direction = sortOrder === 'DESC' ? 'prev' : 'next';
@@ -385,6 +410,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentJobsView = 'table'; // 'table' or 'kanban'
     let companyMap = new Map(); // NEW: To cache company names by ID
 
+    // NEW: Variables to store detail view IDs
+    let currentJobDetailId = null;
+    let currentCompanyDetailId = null;
+
     // NEW: App state variables
     let appState = {
         autoCreateCompany: true,
@@ -457,1332 +486,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // NEW: Settings elements
     const autoCreateCompanyToggle = document.getElementById('auto-create-company-toggle');
     const themeSelect = document.getElementById('theme-select');
-
     // REMOVED: Merge Modal Elements (no longer needed)
-    // const mergeCompanyModal = document.getElementById('merge-company-modal');
-    // const mergeCompanyText = document.getElementById('merge-company-text');
-    // const confirmMergeBtn = document.getElementById('confirm-merge-btn');
-    // const cancelMergeBtn = document.getElementById('cancel-merge-btn');
-
 
     // --- Utility Functions ---
-    function showLoading(text) {
-        loadingText.textContent = text;
-        loadingOverlay.classList.remove('hidden');
-        loadingOverlay.classList.add('flex');
-    }
-    // ... (unchanged helper functions: showLoading, hideLoading, openModal) ...
 
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        modal.querySelector('.modal-content').classList.add('scale-95');
-        modal.style.opacity = '0';
-        setTimeout(() => {
-            modal.classList.remove('flex');
-            // REMOVED: merge-company-modal check
-            modal.querySelector('form')?.reset();
-        }, 300);
-    }
-
-    function logEvent(type, message) {
-        const timestamp = new Date().toISOString();
-        logs.unshift({ timestamp, type, message });
-        if (logs.length > 200) logs.pop(); // Keep logs from getting too big
-        if (document.getElementById('logs-view').offsetParent !== null) {
-            renderLogs();
-        }
-    }
-
-    // UPDATED: Persistent Footer
-    function showStatus(message, type = 'info') {
-        const colors = { info: 'text-muted-foreground', success: 'text-green-400', error: 'text-destructive' };
-        statusFooter.textContent = message;
-        statusFooter.className = `bg-card text-center py-1 px-4 text-sm ${colors[type] || 'text-muted-foreground'} border-t border-border z-10 transition-all duration-300`;
-    }
-
-    function switchView(viewId) {
-        views.forEach(view => view.classList.add('hidden'));
-        document.getElementById(viewId).classList.remove('hidden');
-        navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.dataset.view === viewId) {
-                link.classList.add('active');
-            }
-        });
-        if (viewId === 'jobs-view') {
-            refreshJobsView(); // Refresh jobs view when switching to it
-        }
-        if (viewId === 'logs-view') renderLogs();
-        if (viewId === 'profiles-view') renderProfiles();
-        if (viewId === 'companies-view') {
-            companyGridContainer.classList.remove('hidden');
-            companyDetailContainer.classList.add('hidden');
-            renderCompaniesGrid(); // Render company grid
-        }
-        logEvent('INFO', `Switched to view: ${viewId}`);
-    }
-
-    // --- App Initialization ---
-    async function init() {
-        showLoading('Initializing Database...');
-        logEvent('INFO', 'Application initialization started.');
-        try {
-            const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
-            const savedDb = localStorage.getItem('auto-backup-db');
-            if (savedDb) {
-                const Uints = new Uint8Array(savedDb.split(',').map(Number));
-                db = new SQL.Database(Uints);
-                logEvent('SUCCESS', 'Database loaded from auto-backup.');
-            } else {
-                db = new SQL.Database();
-                logEvent('INFO', 'New database created.');
-            }
-
-            await createTables();
-            loadSettings(); // Load settings early to apply theme
-            renderStatusTabs();
-            renderColumnToggles();
-            await Promise.all([
-                refreshJobsView(),
-                renderCompaniesGrid(),
-                renderPeople(),
-                renderProfiles()
-            ]);
-            setupEventListeners();
-            logEvent('SUCCESS', 'Application initialized successfully.');
-            showStatus('Ready', 'info'); // Set initial status
-        } catch (err) {
-            console.error("Initialization failed:", err);
-            logEvent('ERROR', `Initialization failed: ${err.message}`);
-            showStatus('Initialization failed. Check logs.', 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // --- Database Logic ---
-    async function createTables() {
-        db.exec(`
-            CREATE TABLE IF NOT EXISTS jobs (id INTEGER PRIMARY KEY, title TEXT, company_name TEXT, location TEXT, salary REAL, url TEXT, description TEXT, status TEXT DEFAULT 'Bookmarked', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-            CREATE TABLE IF NOT EXISTS companies (id INTEGER PRIMARY KEY, name TEXT UNIQUE, industry TEXT, location TEXT, website TEXT, linkedin TEXT);
-            CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, job_title TEXT, company_name TEXT, email TEXT, linkedin TEXT);
-            CREATE TABLE IF NOT EXISTS profiles (id INTEGER PRIMARY KEY, name TEXT, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-        `);
-
-        // Safely add new columns for existing users
-        const tables = ['jobs', 'companies', 'people', 'profiles'];
-        tables.forEach(table => {
-            const colsRes = db.exec(`PRAGMA table_info(${table})`);
-            const cols = colsRes.length > 0 ? colsRes[0].values.map(col => col[1]) : [];
-
-            if (!cols.includes('notes')) {
-                db.exec(`ALTER TABLE ${table} ADD COLUMN notes TEXT`);
-                logEvent('INFO', `Upgraded database: Added notes column to ${table} table.`);
-            }
-
-            // Specific columns for 'jobs' table
-            if (table === 'jobs') {
-                if (!cols.includes('profile_id')) {
-                    db.exec("ALTER TABLE jobs ADD COLUMN profile_id INTEGER REFERENCES profiles(id)");
-                    logEvent('INFO', 'Upgraded database: Added profile_id column.');
-                }
-                if (!cols.includes('match_percentage')) {
-                    db.exec("ALTER TABLE jobs ADD COLUMN match_percentage INTEGER");
-                    logEvent('INFO', 'Upgraded database: Added match_percentage column.');
-                }
-                if (!cols.includes('ai_keywords')) {
-                    db.exec("ALTER TABLE jobs ADD COLUMN ai_keywords TEXT");
-                    logEvent('INFO', 'Upgraded database: Added ai_keywords column.');
-                }
-                if (!cols.includes('match_justification')) {
-                    db.exec("ALTER TABLE jobs ADD COLUMN match_justification TEXT");
-                    logEvent('INFO', 'Upgraded database: Added match_justification column.');
-                }
-            }
-        });
-    }
-
-    function executeQuery(sql, params = []) {
-        try {
-            const result = db.exec(sql, params);
-            if (!sql.trim().toUpperCase().startsWith("SELECT")) {
-                autoBackupDatabase();
-            }
-            return result;
-        } catch (e) {
-            console.error("DB Error:", e, "Query:", sql, "Params:", params);
-            logEvent('ERROR', `DB Error: ${e.message}`);
-            showStatus('Database error occurred.', 'error');
-            return null;
-        }
-    }
-
-    // --- Rendering Logic ---
-
-    // NEW: Function to toggle between Table and Kanban views
-    function toggleJobsView(view) {
-        currentJobsView = view;
-        if (view === 'table') {
-            showTableViewBtn.classList.add('active');
-            showKanbanViewBtn.classList.remove('active');
-            jobsTableContainer.classList.remove('hidden');
-            jobsKanbanContainer.classList.add('hidden');
-            statusTabs.classList.remove('hidden');
-            sortControls.classList.remove('hidden');
-            paginationControls.classList.remove('hidden'); // Show pagination
-            renderJobs(currentJobViewStatus);
-        } else {
-            showTableViewBtn.classList.remove('active');
-            showKanbanViewBtn.classList.add('active');
-            jobsTableContainer.classList.add('hidden');
-            jobsKanbanContainer.classList.remove('hidden');
-            statusTabs.classList.add('hidden');
-            sortControls.classList.add('hidden');
-            paginationControls.classList.add('hidden'); // Hide pagination
-            renderJobsKanban();
-        }
-        logEvent('INFO', `Switched to ${view} view.`);
-    }
-
-    // NEW: Main function to call the correct render function
-    function refreshJobsView() {
-        if (currentJobsView === 'table') {
-            renderJobs(currentJobViewStatus);
-        } else {
-            renderJobsKanban();
-        }
-    }
-
-    function renderLogs() {
-        const tableBody = document.getElementById('logs-table-body');
-        if (!tableBody) return;
-        tableBody.innerHTML = logs.map(log => {
-            const typeClass = { 'INFO': 'text-blue-400', 'SUCCESS': 'text-green-400', 'ERROR': 'text-destructive' }[log.type] || 'text-muted-foreground';
-            return `
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">${new Date(log.timestamp).toLocaleString()}</td>
-                    <td class="px-6 py-4 whitespace-nowrap font-semibold ${typeClass}">${log.type}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">${log.message}</td>
-                </tr>`;
-        }).join('');
-    }
-
-    function renderStatusTabs() {
-        const tabsContainer = document.getElementById('status-tabs');
-        tabsContainer.innerHTML = JOB_STATUSES.map(status => `<button class="status-tab border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition whitespace-nowrap" data-status="${status}">${status}</button>`).join('');
-        updateActiveTab();
-    }
-
-    function updateActiveTab() {
-        document.querySelectorAll('.status-tab').forEach(tab => {
-            tab.classList.toggle('active', tab.dataset.status === currentJobViewStatus);
-        });
-    }
-
-    // UPDATED: renderJobs (Table View) - Now with Pagination and Column Visibility
-    async function renderJobs(status) {
-        // 1. Get total count for pagination
-        const countRes = executeQuery(`SELECT COUNT(*) FROM jobs WHERE status = ?`, [status]);
-        const totalItems = countRes[0].values[0][0];
-        const totalPages = Math.ceil(totalItems / appState.itemsPerPage);
-        appState.currentPage = Math.min(appState.currentPage, totalPages) || 1;
-
-        renderPaginationControls(totalItems, totalPages);
-
-        // 2. Get profiles for dropdown
-        const profilesRes = executeQuery("SELECT id, name FROM profiles ORDER BY name");
-        const profiles = profilesRes.length > 0 ? profilesRes[0].values : [];
-
-        // 3. Get paginated job data
-        const offset = (appState.currentPage - 1) * appState.itemsPerPage;
-        const res = executeQuery(`SELECT j.id, j.title, j.company_name, j.location, j.status, j.created_at, j.profile_id, j.match_percentage, j.notes, j.salary, j.url, j.description FROM jobs j WHERE j.status = ? ORDER BY ${currentSortOrder} LIMIT ? OFFSET ?`, [status, appState.itemsPerPage, offset]);
-        const jobs = res.length > 0 ? res[0].values : [];
-
-        // 4. Render Table Head
-        const tableHead = jobsTableContainer.querySelector('thead');
-        tableHead.innerHTML = `
-            <tr>
-                ${appState.columnConfig.map(col => `
-                    <th class="px-6 py-3 text-left text-xs font-medium text-card-foreground uppercase tracking-wider ${col.visible ? '' : 'hidden'}" data-col-key="${col.key}">
-                        ${col.label}
-                    </th>
-                `).join('')}
-            </tr>
-        `;
-
-        // 5. Render Table Body
-        if (jobs.length === 0) {
-            const colSpan = appState.columnConfig.filter(c => c.visible).length;
-            jobsTableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center py-8 text-muted-foreground">No jobs in this category.</td></tr>`;
-            return;
-        }
-
-        jobsTableBody.innerHTML = jobs.map(row => {
-            const [id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage, notes, salary, url, description] = row;
-            const profileOptionsHtml = `<option value="">- Select Profile -</option>` + profiles.map(p => `<option value="${p[0]}" ${p[0] === profile_id ? 'selected' : ''}>${p[1]}</option>`).join('');
-
-            // Create an object from the row data for easy access by key
-            const rowData = { id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage, notes, salary, url, description };
-
-            return `
-                <tr class="job-row" data-id="${id}">
-                    ${appState.columnConfig.map(col => {
-                // Handle each cell based on its column key
-                let content = '';
-                switch (col.key) {
-                    case 'title':
-                    case 'company_name':
-                    case 'location':
-                        content = `<td class="px-6 py-4 whitespace-nowrap" data-field="details">${rowData[col.key] || 'N/A'}</td>`;
-                        break;
-                    case 'salary':
-                        content = `<td class="px-6 py-4 whitespace-nowrap">${rowData.salary ? `₹${rowData.salary} LPA` : 'N/A'}</td>`;
-                        break;
-                    case 'url':
-                        content = `<td class="px-6 py-4 whitespace-nowrap">
-                                    ${rowData.url ? `<a href="${rowData.url}" target="_blank" class="text-primary hover:underline flex items-center"><span class="material-symbols-outlined text-sm mr-1">open_in_new</span>Link</a>` : 'N/A'}
-                                </td>`;
-                        break;
-                    case 'description':
-                        content = `<td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${rowData.description || ''}">${(rowData.description || '').substring(0, 30)}${rowData.description && rowData.description.length > 30 ? '...' : ''}</td>`;
-                        break;
-                    case 'profile_id':
-                        content = `<td class="px-6 py-4 whitespace-nowrap">
-                                    <select data-job-id="${id}" class="profile-select editable-select text-sm">
-                                        ${profileOptionsHtml}
-                                    </select>
-                                </td>`;
-                        break;
-                    case 'match_percentage':
-                        content = `<td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <div class="flex items-center justify-center space-x-2">
-                                        <span>${rowData.match_percentage === null || rowData.match_percentage === undefined ? 'N/A' : `${rowData.match_percentage}%`}</span>
-                                        <button title="Run AI Match Analysis" class="analyze-match-btn text-primary hover:text-accent" data-job-id="${id}" ${!rowData.profile_id ? 'disabled' : ''}>
-                                            <span class="material-symbols-outlined text-lg">biotech</span>
-                                        </button>
-                                    </div>
-                                </td>`;
-                        break;
-                    case 'status':
-                        content = `<td class="px-6 py-4 whitespace-nowrap" data-field="status" data-current-status="${rowData.currentStatus}">${rowData.currentStatus}</td>`;
-                        break;
-                    case 'notes':
-                        content = `<td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="jobs" title="${rowData.notes || 'Click to add notes'}">${rowData.notes || ''}</td>`;
-                        break;
-                    case 'created_at':
-                        content = `<td class="px-6 py-4 whitespace-nowrap" data-field="details">${new Date(rowData.created_at).toLocaleDateString()}</td>`;
-                        break;
-                }
-                return col.visible ? content : content.replace('<td ', '<td class="hidden" ');
-            }).join('')}
-                </tr>`;
-        }).join('');
-    }
-
-    // NEW: Render Pagination Controls
-    function renderPaginationControls(totalItems, totalPages) {
-        pageInfo.textContent = `Page ${appState.currentPage} of ${totalPages || 1}`;
-        prevPageBtn.disabled = appState.currentPage <= 1;
-        nextPageBtn.disabled = appState.currentPage >= totalPages;
-    }
-
-    // NEW: Render Column Toggles - Now with drag and drop
-    function renderColumnToggles() {
-        manageColumnsPopover.innerHTML = appState.columnConfig.map((col, index) => `
-            <div class="column-item" draggable="true" data-col-key="${col.key}">
-                <span class="col-priority">${index + 1}</span>
-                <span class="material-symbols-outlined drag-handle">drag_indicator</span>
-                <label>
-                    <input type="checkbox" data-col-key="${col.key}" class="h-4 w-4 rounded border-border text-primary focus:ring-primary" ${col.visible ? 'checked' : ''}>
-                    <span class="text-sm">${col.label}</span>
-                </label>
-            </div>
-        `).join('');
-
-        // Add checkbox event listeners
-        manageColumnsPopover.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const key = e.target.dataset.colKey;
-                const colConfig = appState.columnConfig.find(c => c.key === key);
-                if (colConfig) {
-                    colConfig.visible = e.target.checked;
-                }
-                saveSettings(); // Save on toggle
-                refreshJobsView(); // Re-render the table
-            });
-        });
-
-        // Add drag/drop listeners
-        setupColumnDragAndDrop();
-    }
-
-    // NEW: Drag and Drop for Columns
-    function setupColumnDragAndDrop() {
-        let draggedItem = null;
-
-        manageColumnsPopover.querySelectorAll('.column-item').forEach(item => {
-            item.addEventListener('dragstart', (e) => {
-                draggedItem = item;
-                setTimeout(() => item.classList.add('dragging'), 0);
-                e.dataTransfer.effectAllowed = 'move';
-            });
-
-            item.addEventListener('dragend', () => {
-                draggedItem?.classList.remove('dragging');
-                draggedItem = null;
-            });
-
-            item.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                const target = e.currentTarget;
-                if (target !== draggedItem && draggedItem) {
-                    // Get bounding box of target
-                    const rect = target.getBoundingClientRect();
-                    // Get vertical center
-                    const midY = rect.top + rect.height / 2;
-                    if (e.clientY < midY) {
-                        target.parentNode.insertBefore(draggedItem, target);
-                    } else {
-                        target.parentNode.insertBefore(draggedItem, target.nextSibling);
-                    }
-                }
-            });
-
-            item.addEventListener('drop', (e) => {
-                e.preventDefault();
-                if (draggedItem) {
-                    draggedItem.classList.remove('dragging');
-
-                    // Update the appState.columnConfig array based on the new DOM order
-                    const newConfig = [];
-                    manageColumnsPopover.querySelectorAll('.column-item').forEach(el => {
-                        const key = el.dataset.colKey;
-                        const config = appState.columnConfig.find(c => c.key === key);
-                        if (config) {
-                            newConfig.push(config);
-                        }
-                    });
-                    appState.columnConfig = newConfig;
-
-                    // Re-render popover to update numbers and re-render table
-                    renderColumnToggles();
-                    refreshJobsView();
-                    saveSettings();
-                }
-            });
-        });
-    }
-
-
-    // NEW: renderJobsKanban (Kanban View) - Now with Drag-and-Drop
-    async function renderJobsKanban() {
-        const res = executeQuery(`SELECT id, title, company_name, match_percentage, salary, status FROM jobs ORDER BY created_at DESC`);
-
-        if (!res) {
-            jobsKanbanContainer.innerHTML = `<p class="text-destructive p-4">Error loading Kanban data.</p>`;
-            return;
-        }
-
-        const jobs = res.length > 0 ? res[0].values : [];
-
-        const jobsByStatus = JOB_STATUSES.reduce((acc, status) => {
-            acc[status] = [];
-            return acc;
-        }, {});
-
-        jobs.forEach(row => {
-            const [id, title, company_name, match_percentage, salary, status] = row;
-            if (jobsByStatus[status]) {
-                jobsByStatus[status].push({ id, title, company_name, match_percentage, salary, status });
-            }
-        });
-
-        jobsKanbanContainer.innerHTML = `
-            <div class="flex space-x-4 overflow-x-auto pb-4">
-                ${JOB_STATUSES.map(status => `
-                    <div class="kanban-column w-72 md:w-80 flex-shrink-0">
-                        <h3 class="font-semibold p-3 bg-muted rounded-t-lg flex justify-between items-center text-sm uppercase tracking-wide">
-                            <span>${status}</span>
-                            <span class="text-xs font-normal bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">${jobsByStatus[status].length}</span>
-                        </h3>
-                        <div id="kanban-col-${status}" data-status="${status}" class="kanban-dropzone space-y-3 p-3 bg-card rounded-b-lg h-full overflow-y-auto" style="min-height: 50vh;">
-                            ${jobsByStatus[status].length === 0 ? `<p class="text-sm text-muted-foreground p-2">No jobs here.</p>` : ''}
-                            ${jobsByStatus[status].map(job => `
-                                <div class="kanban-card p-3 bg-background rounded-lg shadow-sm cursor-pointer" data-id="${job.id}" draggable="true">
-                                    <h4 class="font-semibold text-sm">${job.title}</h4>
-                                    <p class="text-sm text-muted-foreground">${job.company_name}</p>
-                                    <div class="flex justify-between items-center mt-2 text-xs">
-                                        <span class="text-muted-foreground">${job.salary ? `₹${job.salary} LPA` : ''}</span>
-                                        ${job.match_percentage !== null ? `<span class="font-medium ${job.match_percentage > 70 ? 'text-green-400' : 'text-muted-foreground'}">${job.match_percentage}% Match</span>` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-
-        // Add drag-and-drop listeners
-        setupDragAndDrop();
-    }
-
-    // NEW: Drag and Drop Logic
-    function setupDragAndDrop() {
-        let draggedItemId = null;
-
-        document.querySelectorAll('.kanban-card').forEach(card => {
-            card.addEventListener('dragstart', e => {
-                draggedItemId = e.target.dataset.id;
-                setTimeout(() => e.target.classList.add('opacity-50'), 0);
-            });
-
-            card.addEventListener('dragend', e => {
-                draggedItemId = null;
-                e.target.classList.remove('opacity-50');
-            });
-        });
-
-        document.querySelectorAll('.kanban-dropzone').forEach(zone => {
-            zone.addEventListener('dragover', e => {
-                e.preventDefault(); // Allow drop
-                zone.classList.add('bg-muted');
-            });
-
-            zone.addEventListener('dragleave', e => {
-                zone.classList.remove('bg-muted');
-            });
-
-            zone.addEventListener('drop', e => {
-                e.preventDefault();
-                zone.classList.remove('bg-muted');
-                const newStatus = zone.dataset.status;
-
-                if (draggedItemId && newStatus) {
-                    // Update DB
-                    executeQuery("UPDATE jobs SET status = ? WHERE id = ?", [newStatus, draggedItemId]);
-                    logEvent('INFO', `Dragged job ID ${draggedItemId} to ${newStatus}`);
-
-                    // Optimistically update UI
-                    const draggedCard = document.querySelector(`.kanban-card[data-id="${draggedItemId}"]`);
-                    if (draggedCard) {
-                        zone.appendChild(draggedCard);
-                    } else {
-                        renderJobsKanban(); // Fallback to full re-render
-                    }
-                }
-            });
-        });
-    }
-
-
-    async function renderProfiles() {
-        const tableBody = document.getElementById('profiles-table-body');
-        const res = executeQuery("SELECT id, name, created_at, notes FROM profiles ORDER BY created_at DESC");
-        const profiles = res.length > 0 ? res[0].values : [];
-        if (profiles.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-muted-foreground">No profiles created yet.</td></tr>`;
-            return;
-        }
-        tableBody.innerHTML = profiles.map(row => {
-            const [id, name, created_at, notes] = row;
-            return `
-                <tr class="hover:bg-muted">
-                    <td class="px-6 py-4 whitespace-nowrap">${name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="profiles" title="${notes || 'Click to add notes'}">${notes || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${new Date(created_at).toLocaleDateString()}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <button class="delete-profile-btn text-destructive hover:opacity-70" data-id="${id}"><span class="material-symbols-outlined">delete</span></button>
-                    </td>
-                </tr>`}).join('');
-    }
-
-    // UPDATED: renderCompanies to renderCompaniesGrid
-    async function renderCompaniesGrid() {
-        const searchTerm = companySearchInput.value.toLowerCase();
-        const res = executeQuery("SELECT id, name, industry, location FROM companies ORDER BY name");
-        const companies = res.length > 0 ? res[0].values : [];
-
-        const filteredCompanies = companies.filter(([id, name, industry, location]) =>
-            name.toLowerCase().includes(searchTerm) ||
-            (industry || '').toLowerCase().includes(searchTerm) ||
-            (location || '').toLowerCase().includes(searchTerm)
-        );
-
-        if (filteredCompanies.length === 0) {
-            companyGrid.innerHTML = `<p class="text-muted-foreground">No companies found.</p>`;
-            return;
-        }
-
-        companyGrid.innerHTML = filteredCompanies.map(([id, name, industry, location]) => `
-            <div class="company-card" data-id="${id}">
-                <h3 class="font-semibold text-lg">${name}</h3>
-                <p class="text-sm text-muted-foreground">${industry || 'No industry'}</p>
-                <p class="text-sm text-muted-foreground mt-1 flex items-center">
-                    <span class="material-symbols-outlined text-sm mr-1">location_on</span>
-                    ${location || 'No location'}
-                </p>
-            </div>
-        `).join('');
-
-        // Add click listeners
-        companyGrid.querySelectorAll('.company-card').forEach(card => {
-            card.addEventListener('click', () => {
-                showCompanyDetail(card.dataset.id);
-            });
-        });
-    }
-
-    // NEW: Show Company Detail Page
-    async function showCompanyDetail(companyId) {
-        companyGridContainer.classList.add('hidden');
-        companyDetailContainer.classList.remove('hidden');
-
-        // 1. Fetch and populate company details
-        const res = executeQuery("SELECT id, name, industry, location, website, linkedin, notes FROM companies WHERE id = ?", [companyId]);
-        if (!res || res.length === 0) return;
-
-        const [id, name, industry, location, website, linkedin, notes] = res[0].values[0];
-        editCompanyForm.elements.id.value = id;
-        editCompanyForm.elements.name.value = name;
-        editCompanyForm.elements.industry.value = industry || '';
-        editCompanyForm.elements.location.value = location || '';
-        editCompanyForm.elements.website.value = website || '';
-        editCompanyForm.elements.linkedin.value = linkedin || '';
-        editCompanyForm.elements.notes.value = notes || '';
-
-        // 2. Fetch and render related jobs
-        const profilesRes = executeQuery("SELECT id, name FROM profiles");
-        const profilesMap = profilesRes.length > 0 ? profilesRes[0].values.reduce((acc, [id, name]) => {
-            acc[id] = name;
-            return acc;
-        }, {}) : {};
-
-        const jobsRes = executeQuery("SELECT id, title, status, location, salary, created_at, match_percentage, profile_id FROM jobs WHERE company_name = ? ORDER BY created_at DESC", [name]);
-        const jobs = jobsRes.length > 0 ? jobsRes[0].values : [];
-
-        if (jobs.length === 0) {
-            relatedJobsList.innerHTML = `<p class="text-muted-foreground">No jobs found for this company.</p>`;
-        } else {
-            // UPDATED: To render grid of cards with requested fields
-            relatedJobsList.innerHTML = jobs.map(([jobId, title, status, location, salary, created_at, match_percentage, profile_id]) => `
-                <div class="related-job-card">
-                    <div class="flex justify-between items-start">
-                        <h4 class="text-sm" data-job-id="${jobId}">${title}</h4>
-                        <span class="text-xs font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full whitespace-nowrap">${status}</span>
-                    </div>
-                    <p><span class="material-symbols-outlined !text-sm">location_on</span> ${location || 'N/A'}</p>
-                    <p><span class="material-symbols-outlined !text-sm">paid</span> ${salary ? `₹${salary} LPA` : 'N/A'}</p>
-                    <p><span class="material-symbols-outlined !text-sm">badge</span> ${profilesMap[profile_id] || 'N/A'}</p>
-                    <p><span class="material-symbols-outlined !text-sm">percent</span> ${match_percentage !== null ? `${match_percentage}% Match` : 'N/A'}</p>
-                    <p><span class="material-symbols-outlined !text-sm">calendar_today</span> ${new Date(created_at).toLocaleDateString()}</p>
-                </div>
-            `).join('');
-
-            // Add click listeners to job titles
-            relatedJobsList.querySelectorAll('h4[data-job-id]').forEach(titleEl => {
-                titleEl.addEventListener('click', () => {
-                    switchView('jobs-view'); // Switch to main jobs view
-                    showJobDetail(titleEl.dataset.jobId); // Open the detail modal
-                });
-            });
-        }
-
-        // Clear AI output
-        document.getElementById('company-ai-output').innerHTML = '';
-    }
-
-    // UPDATED: Handle Company Form Submit with Merge Logic
-    async function handleEditCompany(e) {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target).entries());
-
-        // 1. Get the old name *before* updating
-        const oldNameRes = executeQuery("SELECT name FROM companies WHERE id = ?", [data.id]);
-        if (!oldNameRes || oldNameRes.length === 0) {
-            logEvent('ERROR', `Could not find company with ID ${data.id} to update.`);
-            showStatus('Error updating company.', 'error');
-            return;
-        }
-        const oldName = oldNameRes[0].values[0][0];
-
-        // 2. Update the company
-        executeQuery("UPDATE companies SET name = ?, industry = ?, location = ?, website = ?, linkedin = ?, notes = ? WHERE id = ?",
-            [data.name, data.industry, data.location, data.website, data.linkedin, data.notes, data.id]);
-
-        logEvent('SUCCESS', `Updated company: ${data.name}`);
-        showStatus('Company updated successfully!', 'success');
-
-        // 3. If name changed, check for jobs with old name and ask to merge
-        if (oldName !== data.name) {
-            const jobsRes = executeQuery("SELECT id FROM jobs WHERE company_name = ?", [oldName]);
-            const jobsToMerge = jobsRes.length > 0 ? jobsRes[0].values : [];
-            if (jobsToMerge.length > 0) {
-                openMergeModal(oldName, data.name, jobsToMerge.length);
-            }
-        }
-
-        await renderCompaniesGrid(); // Refresh grid
-    }
-
-    // NEW: Open Merge Modal
-    function openMergeModal(oldName, newName, count) {
-        mergeCompanyText.innerHTML = `You renamed "<strong>${oldName}</strong>" to "<strong>${newName}</strong>".<br>We found <strong>${count}</strong> job(s) linked to the old name. Do you want to update them?`;
-
-        // Use .onclick to ensure we only have one listener
-        confirmMergeBtn.onclick = () => {
-            confirmMergeCompany(oldName, newName);
-        };
-        cancelMergeBtn.onclick = () => {
-            closeModal('merge-company-modal');
-        };
-
-        openModal('merge-company-modal');
-    }
-
-    // NEW: Confirm Merge Function
-    function confirmMergeCompany(oldName, newName) {
-        executeQuery("UPDATE jobs SET company_name = ? WHERE company_name = ?", [newName, oldName]);
-        logEvent('INFO', `Merged ${oldName} into ${newName}.`);
-        showStatus(`Successfully merged jobs into ${newName}.`, 'success');
-        closeModal('merge-company-modal');
-        // Refresh related jobs if user is still on the detail page
-        if (!companyDetailContainer.classList.contains('hidden')) {
-            showCompanyDetail(editCompanyForm.elements.id.value);
-        }
-    }
-
-
-    async function renderPeople() {
-        const tableBody = document.getElementById('people-table-body');
-        const res = executeQuery("SELECT id, first_name, last_name, job_title, company_name, email, linkedin, notes FROM people ORDER BY last_name");
-        const people = res.length > 0 ? res[0].values : [];
-        tableBody.innerHTML = people.map(row => {
-            const [id, first_name, last_name, job_title, company_name, email, linkedin, notes] = row;
-            return `
-                <tr class="hover:bg-muted">
-                    <td class="px-6 py-4 whitespace-nowrap">${first_name} ${last_name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${job_title || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${company_name || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${email || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap"><a href="${linkedin}" target="_blank" class="text-primary hover:underline">${linkedin || ''}</a></td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="people" title="${notes || 'Click to add notes'}">${notes || ''}</td>
-                </tr>`}).join('');
-    }
-
-    async function showJobDetail(jobId) {
-        currentOpenJobId = jobId;
-        const res = executeQuery("SELECT title, company_name, description, notes, profile_id, match_percentage, ai_keywords, match_justification FROM jobs WHERE id = ?", [jobId]);
-        if (!res || res.length === 0) {
-            logEvent('ERROR', `Could not find job with ID ${jobId}`);
-            return;
-        }
-
-        const [title, company, description, notes, profile_id, match_percentage, ai_keywords, match_justification] = res[0].values[0];
-
-        document.getElementById('detail-job-title').textContent = title;
-        document.getElementById('detail-job-company').textContent = company;
-        document.getElementById('detail-job-description').innerHTML = description ? description.replace(/\n/g, '<br>') : 'No description provided.';
-        document.getElementById('detail-job-notes').textContent = notes || 'No notes for this job.';
-
-        document.getElementById('save-ai-btn').classList.add('hidden');
-        unsavedAnalysisData = null;
-
-        if (ai_keywords) {
-            try { renderKeywords(JSON.parse(ai_keywords)); }
-            catch (e) {
-                logEvent('ERROR', `Failed to parse saved keywords for JobID ${jobId}`);
-                document.getElementById('ai-detail-panel').innerHTML = `<p class="text-destructive text-sm">Could not load saved analysis.</p>`;
-            }
-        } else {
-            document.getElementById('ai-detail-panel').innerHTML = `<p class="text-muted-foreground text-sm">Click the ✨ button to generate keyword analysis.</p>`;
-        }
-
-        if (match_percentage !== null && match_justification) {
-            renderMatchAnalysis({ match_percentage, justification: match_justification });
-        } else if (profile_id) {
-            document.getElementById('ai-match-panel').innerHTML = `<p class="text-muted-foreground text-sm">Click the ✨ button to generate a profile match analysis.</p>`;
-        } else {
-            document.getElementById('ai-match-panel').innerHTML = `<p class="text-muted-foreground text-sm">Select a profile from the main list to enable match analysis.</p>`;
-        }
-
-        jobsListView.classList.add('hidden');
-        jobDetailView.classList.remove('hidden');
-    }
-
-    // --- Event Handlers ---
-    function setupEventListeners() {
-        navLinks.forEach(link => link.addEventListener('click', (e) => switchView(e.currentTarget.dataset.view)));
-        ['add-job-btn', 'add-profile-btn', 'add-company-btn', 'add-person-btn'].forEach(id => {
-            document.getElementById(id).addEventListener('click', () => openModal(id.replace('-btn', '-modal')));
-        });
-        document.querySelectorAll('.cancel-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal').id)));
-
-        statusTabs.addEventListener('click', e => {
-            if (e.target.classList.contains('status-tab')) {
-                currentJobViewStatus = e.target.dataset.status;
-                updateActiveTab();
-                renderJobs(currentJobViewStatus);
-            }
-        });
-
-        document.getElementById('sort-jobs-select').addEventListener('change', e => {
-            currentSortOrder = e.target.value;
-            logEvent('INFO', `Changed job sort order to: ${e.target.options[e.target.selectedIndex].text}`);
-            renderJobs(currentJobViewStatus);
-        });
-
-        // Event listener for Table view
-        jobsTableBody.addEventListener('click', e => {
-            const cell = e.target.closest('td');
-            if (cell && cell.dataset.field === 'details') {
-                const row = cell.closest('.job-row');
-                if (row) showJobDetail(row.dataset.id);
-            }
-
-            const analyzeBtn = e.target.closest('.analyze-match-btn');
-            if (analyzeBtn) {
-                const jobId = analyzeBtn.dataset.jobId;
-                const profileSelect = analyzeBtn.closest('tr').querySelector('.profile-select');
-                if (profileSelect.value) {
-                    handleAnalyzeMatchFromList(jobId, profileSelect.value);
-                } else {
-                    showStatus("Please select a profile first.", "error");
-                }
-            }
-        });
-
-        jobsTableBody.addEventListener('change', async e => {
-            if (e.target.classList.contains('profile-select')) {
-                const jobId = e.target.dataset.jobId;
-                const profileId = e.target.value;
-                executeQuery("UPDATE jobs SET profile_id = ?, match_percentage = NULL, match_justification = NULL WHERE id = ?", [profileId || null, jobId]);
-                logEvent('INFO', `Set profile to ID ${profileId || 'None'} for job ID ${jobId}.`);
-                const analyzeBtn = e.target.closest('tr').querySelector('.analyze-match-btn');
-                analyzeBtn.disabled = !profileId;
-                await renderJobs(currentJobViewStatus);
-            }
-        });
-
-        jobsTableBody.addEventListener('dblclick', e => {
-            const cell = e.target.closest('td');
-            if (cell && cell.dataset.field === 'status') makeStatusEditable(cell);
-        });
-
-        // NEW: Event listener for Kanban view
-        jobsKanbanContainer.addEventListener('click', e => {
-            const card = e.target.closest('.kanban-card');
-            if (card) {
-                showJobDetail(card.dataset.id);
-            }
-        });
-
-        // NEW: View Toggle Buttons
-        showTableViewBtn.addEventListener('click', () => toggleJobsView('table'));
-        showKanbanViewBtn.addEventListener('click', () => toggleJobsView('kanban'));
-
-        // NEW: Pagination listeners
-        prevPageBtn.addEventListener('click', () => {
-            if (appState.currentPage > 1) {
-                appState.currentPage--;
-                renderJobs(currentJobViewStatus);
-            }
-        });
-        nextPageBtn.addEventListener('click', () => {
-            appState.currentPage++; // renderJobs will cap this if it's too high
-            renderJobs(currentJobViewStatus);
-        });
-        itemsPerPageSelect.addEventListener('change', (e) => {
-            appState.itemsPerPage = parseInt(e.target.value, 10);
-            appState.currentPage = 1; // Reset to first page
-            renderJobs(currentJobViewStatus);
-        });
-
-        // NEW: Column toggle popover listener
-        manageColumnsBtn.addEventListener('click', () => {
-            manageColumnsPopover.classList.toggle('show');
-        });
-        // Close popover if clicking outside
-        document.addEventListener('click', (e) => {
-            if (!manageColumnsBtn.contains(e.target) && !manageColumnsPopover.contains(e.target)) {
-                manageColumnsPopover.classList.remove('show');
-            }
-        });
-
-
-        document.getElementById('profiles-table-body').addEventListener('click', e => {
-            const deleteBtn = e.target.closest('.delete-profile-btn');
-            // Replaced confirm() with a simple true
-            if (deleteBtn && true) { // Bypassed confirm()
-                const profileId = deleteBtn.dataset.id;
-                executeQuery("DELETE FROM profiles WHERE id = ?", [profileId]);
-                logEvent('SUCCESS', `Deleted profile ID ${profileId}`);
-                showStatus('Profile deleted.', 'success');
-                renderProfiles();
-                refreshJobsView(); // Refresh jobs view in case profile was used
-            }
-        });
-
-        document.getElementById('back-to-jobs-list').addEventListener('click', () => {
-            jobDetailView.classList.add('hidden');
-            jobsListView.classList.remove('hidden');
-            refreshJobsView(); // Use new refresh function
-        });
-
-        document.getElementById('generate-ai-btn').addEventListener('click', generateAndDisplayFullAnalysis);
-        document.getElementById('save-ai-btn').addEventListener('click', handleSaveAnalysis);
-
-        document.getElementById('add-job-form').addEventListener('submit', handleAddJob);
-        document.getElementById('add-profile-form').addEventListener('submit', handleAddProfile);
-        document.getElementById('add-company-form').addEventListener('submit', handleAddCompany);
-        document.getElementById('add-person-form').addEventListener('submit', handleAddPerson);
-        document.getElementById('edit-notes-form').addEventListener('submit', handleEditNotes);
-        // NEW: Company view listeners
-        companySearchInput.addEventListener('input', renderCompaniesGrid);
-        backToCompanyGridBtn.addEventListener('click', () => {
-            companyDetailContainer.classList.add('hidden');
-            companyGridContainer.classList.remove('hidden');
-            renderCompaniesGrid(); // Refresh grid in case names changed
-        });
-        editCompanyForm.addEventListener('submit', handleEditCompany);
-
-
-        document.querySelector('main').addEventListener('click', e => {
-            const notesCell = e.target.closest('td[data-field="notes"]');
-            if (notesCell) {
-                openNotesEditor(notesCell);
-            }
-        });
-
-        // UPDATED: Settings Listeners
-        document.getElementById('llm-api-url').addEventListener('change', saveSettings);
-        autoCreateCompanyToggle.addEventListener('change', saveSettings);
-        themeSelect.addEventListener('change', () => {
-            applyTheme(themeSelect.value);
-            saveSettings();
-        });
-        document.getElementById('test-connection-btn').addEventListener('click', testLLMConnection);
-        document.getElementById('backup-db-btn').addEventListener('click', downloadBackup);
-        document.getElementById('restore-db-input').addEventListener('change', restoreDatabase);
-    }
-
-    function openNotesEditor(cell) {
-        const id = cell.dataset.id;
-        const type = cell.dataset.type;
-        const currentNotes = cell.title.replace('Click to add notes', ''); // Use title to get full notes
-
-        const form = document.getElementById('edit-notes-form');
-        form.elements.itemId.value = id;
-        form.elements.itemType.value = type;
-        form.elements.notes.value = currentNotes;
-
-        openModal('edit-notes-modal');
-    }
-
-    async function handleEditNotes(e) {
-        e.preventDefault();
-        const form = e.target;
-        const id = form.elements.itemId.value;
-        const type = form.elements.itemType.value;
-        const notes = form.elements.notes.value;
-
-        if (!id || !type) {
-            showStatus("Error saving notes: missing data.", "error");
-            return;
-        }
-
-        executeQuery(`UPDATE ${type} SET notes = ? WHERE id = ?`, [notes, id]);
-        logEvent('SUCCESS', `Updated notes for ${type} ID ${id}.`);
-        showStatus('Notes updated successfully!', 'success');
-
-        closeModal('edit-notes-modal');
-
-        switch (type) {
-            case 'jobs':
-                await refreshJobsView();
-                break;
-            case 'profiles':
-                await renderProfiles();
-                break;
-            case 'companies':
-                await renderCompanies(); // This function might need to be renderCompaniesGrid()
-                break;
-            case 'people':
-                await renderPeople();
-                break;
-        }
-    }
-
-    async function handleAddJob(e) {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target).entries());
-
-        // NEW: Auto-create company logic
-        if (appState.autoCreateCompany && data.company_name) {
-            try {
-                const res = executeQuery("SELECT id FROM companies WHERE name = ?", [data.company_name]);
-                if (res.length === 0 || res[0].values.length === 0) {
-                    executeQuery("INSERT INTO companies (name) VALUES (?)", [data.company_name]);
-                    logEvent('INFO', `Auto-created new company: ${data.company_name}`);
-                }
-            } catch (err) {
-                logEvent('ERROR', `Failed to auto-create company: ${err.message}`);
-            }
-        }
-
-        executeQuery("INSERT INTO jobs (title, company_name, location, salary, url, description, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [data.title, data.company_name, data.location, data.salary || null, data.url, data.description, 'Bookmarked', data.notes]);
-        logEvent('SUCCESS', `Added new job: ${data.title}`);
-        showStatus('Job saved successfully!', 'success');
-        await refreshJobsView();
-        closeModal('add-job-modal');
-    }
-
-    async function handleAddProfile(e) {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target).entries());
-        if (!data.name || !data.content) {
-            showStatus("Profile Name and Content are required.", "error"); return;
-        }
-        executeQuery("INSERT INTO profiles (name, content, notes) VALUES (?, ?, ?)", [data.name, data.content, data.notes]);
-        logEvent('SUCCESS', `Added new profile: ${data.name}`);
-        showStatus('Profile saved!', 'success');
-        await renderProfiles();
-        closeModal('add-profile-modal');
-    }
-
-    async function handleAddCompany(e) {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target).entries());
-        executeQuery("INSERT OR IGNORE INTO companies (name, industry, location, website, linkedin, notes) VALUES (?, ?, ?, ?, ?, ?)", [data.name, data.industry, data.location, data.website, data.linkedin, data.notes]);
-        logEvent('SUCCESS', `Added company: ${data.name}`);
-        showStatus('Company saved!', 'success');
-        await renderCompaniesGrid(); // Refresh grid
-        closeModal('add-company-modal');
-    }
-
-    async function handleAddPerson(e) {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target).entries());
-        executeQuery("INSERT INTO people (first_name, last_name, job_title, company_name, email, linkedin, notes) VALUES (?, ?, ?, ?, ?, ?, ?)", [data.first_name, data.last_name, data.job_title, data.company_name, data.email, data.linkedin, data.notes]);
-        logEvent('SUCCESS', `Added contact: ${data.first_name} ${data.last_name}`);
-        showStatus('Contact saved!', 'success');
-        await renderPeople();
-        closeModal('add-person-modal');
-    }
-
-    function makeStatusEditable(cell) {
-        const currentStatus = cell.dataset.currentStatus;
-        cell.innerHTML = `<select class="editable-select text-sm">${JOB_STATUSES.map(s => `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
-        const select = cell.querySelector('select');
-        select.focus();
-        const saveChange = () => {
-            const newStatus = select.value;
-            const jobId = cell.closest('.job-row').dataset.id;
-            executeQuery("UPDATE jobs SET status = ? WHERE id = ?", [newStatus, jobId]);
-            logEvent('INFO', `Updated status for job ID ${jobId} to ${newStatus}`);
-            showStatus('Status updated.', 'success');
-            renderJobs(currentJobViewStatus); // Re-render the jobs list
-        };
-        select.addEventListener('blur', saveChange);
-        select.addEventListener('change', saveChange);
-    }
-
-    // --- Auto Backup & Persistence ---
-    function autoBackupDatabase() {
-        try {
-            const data = db.export();
-            localStorage.setItem('auto-backup-db', data.join(','));
-        } catch (e) {
-            logEvent('ERROR', `Auto-backup failed: ${e.message}`);
-        }
-    }
-
-    function downloadBackup() {
-        const blob = new Blob([db.export()], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `job_tracker_backup_${Date.now()}.sqlite`;
-        a.click();
-        URL.revokeObjectURL(url);
-        logEvent('SUCCESS', 'Manual database backup created.');
-        showStatus('Backup file downloaded.', 'success');
-    }
-
-    // NEW: Apply Theme Function
-    function applyTheme(themeName) {
-        if (themeName === 'Humanist Dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-        appState.theme = themeName;
-    }
-
-    function saveSettings() {
-        const apiUrl = document.getElementById('llm-api-url').value;
-        appState.autoCreateCompany = autoCreateCompanyToggle.checked;
-        appState.theme = themeSelect.value; // Save theme
-
-        const settings = {
-            llmApiUrl: apiUrl,
-            autoCreateCompany: appState.autoCreateCompany,
-            itemsPerPage: appState.itemsPerPage, // Save pagination setting
-            columnConfig: appState.columnConfig, // Save NEW column config
-            theme: appState.theme // Save theme
-        };
-        localStorage.setItem('jobTrackerSettings', JSON.stringify(settings));
-        logEvent('SUCCESS', 'Settings saved.');
-        showStatus('Settings saved!', 'success');
-    }
-
-    function loadSettings() {
-        const settings = JSON.parse(localStorage.getItem('jobTrackerSettings'));
-        if (settings) {
-            if (settings.llmApiUrl) {
-                document.getElementById('llm-api-url').value = settings.llmApiUrl;
-            }
-            appState.autoCreateCompany = settings.autoCreateCompany !== false; // default to true
-            autoCreateCompanyToggle.checked = appState.autoCreateCompany;
-
-            // Load theme
-            appState.theme = settings.theme || 'Humanist Dark';
-            themeSelect.value = appState.theme;
-            applyTheme(appState.theme);
-
-            // Load pagination and column settings
-            appState.itemsPerPage = settings.itemsPerPage || 10;
-            itemsPerPageSelect.value = appState.itemsPerPage;
-
-            // NEW: Load columnConfig
-            if (settings.columnConfig) {
-                appState.columnConfig = settings.columnConfig;
-                // Ensure all keys from COLUMN_DEFINITIONS exist in the loaded config
-                const loadedKeys = appState.columnConfig.map(c => c.key);
-                Object.keys(COLUMN_DEFINITIONS).forEach(key => {
-                    if (!loadedKeys.includes(key)) {
-                        appState.columnConfig.push({
-                            key: key,
-                            label: COLUMN_DEFINITIONS[key],
-                            visible: false // Default new columns to hidden
-                        });
-                    }
-                });
-                // Ensure all labels are up-to-date
-                appState.columnConfig.forEach(col => {
-                    col.label = COLUMN_DEFINITIONS[col.key];
-                });
-            }
-        }
-
-        // Load legacy visibility settings if they exist and convert them
-        const legacyColumnVisibility = JSON.parse(localStorage.getItem('jobTrackerColumnVisibility'));
-        if (legacyColumnVisibility) {
-            // This is the old format (object of booleans)
-            // We just update the 'visible' property in our new array structure
-            appState.columnConfig.forEach(col => {
-                if (legacyColumnVisibility[col.key] !== undefined) {
-                    col.visible = legacyColumnVisibility[col.key];
-                }
-            });
-            localStorage.removeItem('jobTrackerColumnVisibility'); // Remove old key
-            saveSettings(); // Re-save under new structure
-        }
-    }
-
-    async function restoreDatabase(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        // Bypassed confirm for iframe compatibility
-        showLoading('Restoring Database...');
-        const reader = new FileReader();
-        reader.onload = async function (e) {
-            try {
-                const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
-                db = new SQL.Database(new Uint8Array(e.target.result));
-                autoBackupDatabase();
-                await init();
-                logEvent('SUCCESS', `Database restored from file: ${file.name}`);
-                showStatus('Database restored successfully!', 'success');
-                switchView('jobs-view');
-            } catch (err) {
-                console.error("Restore failed:", err);
-                logEvent('ERROR', `Database restore failed: ${err.message}`);
-                showStatus('Database restore failed.', 'error');
-            } finally {
-                hideLoading();
-                event.target.value = '';
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    // --- AI Integration ---
-    async function testLLMConnection() {
-        const apiUrl = document.getElementById('llm-api-url')?.value;
-        if (!apiUrl) { showStatus('Please enter an API Endpoint URL first.', 'error'); return; }
-        const btn = document.getElementById('test-connection-btn');
-        btn.disabled = true;
-        btn.innerHTML = `<span class="material-symbols-outlined spin">progress_activity</span>`;
-        showStatus('Testing connection...', 'info');
-        logEvent('INFO', `Testing LLM connection to ${apiUrl}`);
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: "local-model", messages: [{ role: "user", content: "Say 'Hello'" }] })
-            });
-            if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
-            const result = await response.json();
-            if (result.choices && result.choices[0]) {
-                showStatus('Connection successful!', 'success');
-                logEvent('SUCCESS', 'LLM connection test was successful.');
-            } else { throw new Error('Invalid response format from server.'); }
-        } catch (error) {
-            console.error("LLM Connection Test Error:", error);
-            showStatus(`Connection failed. Check logs.`, 'error');
-            logEvent('ERROR', `LLM connection test failed: ${error.message}`);
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'Test';
-        }
-    }
-
-    async function callLLM(prompt, content) {
-        const apiUrl = document.getElementById('llm-api-url')?.value;
-        if (!apiUrl) throw new Error("LLM API Endpoint not set in Settings.");
-        const response = await fetch(apiUrl, {
-            method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: "local-model", messages: [{ role: "user", content: `${prompt}\n\n---\n\n${content}` }], stream: false })
-        });
-        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
-        const result = await response.json();
-        let llmContent = result.choices[0]?.message?.content;
-
-        if (llmContent) {
-            llmContent = llmContent.replace(/```json/g, '').replace(/```/g, '').trim();
-        }
-
-        return llmContent;
-    }
-
-    async function runKeywordsAnalysis(description) {
-        const prompt = `Based on the following job description, extract key skills and technologies. Categorize them under 'Requirements', 'Responsibilities', and 'Preferred'. Provide the output as a single, minified JSON object with no extra text or markdown. Example: {"Requirements":["Skill A","Skill B"],"Responsibilities":["Task C","Task D"],"Preferred":["Tool E"]}`;
-        const content = await callLLM(prompt, description);
-        return JSON.parse(content);
-    }
-
-    async function runMatchAnalysis(jobDescription, profileContent) {
-        const prompt = `Analyze the following resume against the job description. Provide a percentage match score (0-100) and a brief, one-sentence justification. Return a single, minified JSON object with keys "match_percentage" and "justification". Example: {"match_percentage":85,"justification":"Strong match in key skills, but lacks preferred experience."}`;
-        const combinedContent = `[RESUME]\n${profileContent}\n\n[JOB DESCRIPTION]\n${jobDescription}`;
-        const content = await callLLM(prompt, combinedContent);
-        return JSON.parse(content);
-    }
-
-    async function handleAnalyzeMatchFromList(jobId, profileId) {
-        showStatus(`Analyzing match for job...`, 'info');
-        logEvent('INFO', `Starting AI profile match for JobID: ${jobId} & ProfileID: ${profileId}`);
-        try {
-            const jobRes = executeQuery("SELECT description FROM jobs WHERE id = ?", [jobId]);
-            const profileRes = executeQuery("SELECT content FROM profiles WHERE id = ?", [profileId]);
-            const jobDescription = jobRes[0].values[0][0];
-            const profileContent = profileRes[0].values[0][0];
-            if (!jobDescription || !profileContent) { showStatus("Job/profile content is empty.", "error"); return; }
-            const { match_percentage, justification } = await runMatchAnalysis(jobDescription, profileContent);
-            executeQuery("UPDATE jobs SET match_percentage = ?, match_justification = ? WHERE id = ?", [match_percentage, justification, jobId]);
-            logEvent('SUCCESS', `AI match for JobID ${jobId} is ${match_percentage}%.`);
-            showStatus(`AI Match: ${match_percentage}%`, 'success');
-            await renderJobs(currentJobViewStatus);
-        } catch (error) {
-            console.error("LLM Match Error (List View):", error);
-            logEvent('ERROR', `LLM Match Error (List View): ${error.message}`);
-            showStatus('AI match analysis failed.', 'error');
-        }
-    }
-
-    async function generateAndDisplayFullAnalysis() {
-        if (!currentOpenJobId) return;
-        const generateBtn = document.getElementById('generate-ai-btn');
-        generateBtn.disabled = true;
-        generateBtn.innerHTML = `<span class="material-symbols-outlined spin">progress_activity</span>`;
-        const [description, profile_id] = executeQuery("SELECT description, profile_id FROM jobs WHERE id = ?", [currentOpenJobId])[0].values[0];
-        const keywordsPanel = document.getElementById('ai-detail-panel');
-        const matchPanel = document.getElementById('ai-match-panel');
-        keywordsPanel.innerHTML = `<div class="text-center"><span class="material-symbols-outlined spin mr-2">progress_activity</span>Analyzing keywords...</div>`;
-        if (profile_id) { matchPanel.innerHTML = `<div class="text-center mt-4"><span class="material-symbols-outlined spin mr-2">progress_activity</span>Analyzing match...</div>`; }
-        try {
-            const analysisPromises = [runKeywordsAnalysis(description)];
-            if (profile_id) {
-                const profileContent = executeQuery("SELECT content FROM profiles WHERE id = ?", [profile_id])[0].values[0][0];
-                analysisPromises.push(runMatchAnalysis(description, profileContent));
-            }
-            const [keywordsResult, matchResult] = await Promise.all(analysisPromises);
-            unsavedAnalysisData = { keywords: keywordsResult, match: matchResult || null };
-            renderKeywords(keywordsResult);
-            if (matchResult) renderMatchAnalysis(matchResult);
-            document.getElementById('save-ai-btn').classList.remove('hidden');
-            showStatus('AI analysis generated. Click Save to keep it.', 'success');
-            logEvent('SUCCESS', `Generated new AI analysis for JobID ${currentOpenJobId}`);
-        } catch (error) {
-            console.error("Full Analysis Error:", error);
-            logEvent('ERROR', `Full analysis failed: ${error.message}`);
-            showStatus('AI analysis failed. Check logs.', 'error');
-            keywordsPanel.innerHTML = `<p class="text-destructive text-sm">Keyword analysis failed.</p>`;
-            if (profile_id) matchPanel.innerHTML = `<p class="text-destructive text-sm">Match analysis failed.</p>`;
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = `<span class="material-symbols-outlined">auto_awesome</span>`;
-        }
-    }
-
-    async function handleSaveAnalysis() {
-        if (!unsavedAnalysisData || !currentOpenJobId) { showStatus('No analysis data to save.', 'error'); return; }
-        const { keywords, match } = unsavedAnalysisData;
-        executeQuery("UPDATE jobs SET ai_keywords = ?, match_percentage = ?, match_justification = ? WHERE id = ?",
-            [JSON.stringify(keywords), match ? match.match_percentage : null, match ? match.justification : null, currentOpenJobId]);
-        logEvent('SUCCESS', `Saved AI analysis for JobID ${currentOpenJobId}`);
-        showStatus('AI analysis saved successfully!', 'success');
-        document.getElementById('save-ai-btn').classList.add('hidden');
-        unsavedAnalysisData = null;
-    }
-
-    function renderKeywords(data) {
-        const panel = document.getElementById('ai-detail-panel');
-        panel.innerHTML = '';
-        const categoryOrder = ['Requirements', 'Responsibilities', 'Preferred'];
-        let contentExists = false;
-        for (const category of categoryOrder) {
-            if (data[category] && data[category].length > 0) {
-                contentExists = true;
-                const categoryDiv = document.createElement('div');
-                categoryDiv.innerHTML = `<h4 class="font-semibold text-muted-foreground text-sm mb-2">${category}</h4>`;
-                const tagContainer = document.createElement('div');
-                tagContainer.className = 'flex flex-wrap gap-2';
-                data[category].forEach(keyword => {
-                    const tag = document.createElement('span');
-                    tag.className = 'bg-primary bg-opacity-30 text-primary text-opacity-90 text-xs font-medium px-2.5 py-1 rounded-full';
-                    tag.textContent = keyword;
-                    tagContainer.appendChild(tag);
-                });
-                categoryDiv.appendChild(tagContainer);
-                panel.appendChild(categoryDiv);
-            }
-        }
-        if (!contentExists) {
-            panel.innerHTML = `<p class="text-muted-foreground text-sm">The AI could not extract any specific keywords.</p>`;
-        }
-    }
-
-    function renderMatchAnalysis(data) {
-        const panel = document.getElementById('ai-match-panel');
-        panel.innerHTML = `
-             <h4 class="font-semibold text-muted-foreground text-sm mb-2">Profile Match Analysis</h4>
-             <div class="text-3xl font-bold text-primary">${data.match_percentage}%</div>
-             <p class="text-sm text-card-foreground mt-2">${data.justification}</p>
-            `;
-    }
-
-    // ... (unchanged helper functions: showStatus, switchView) ...
     function showLoading(text) {
         loadingText.textContent = text;
         loadingOverlay.classList.remove('hidden');
@@ -1801,6 +508,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             modal.querySelector('.modal-content').classList.remove('scale-95');
             modal.style.opacity = '1';
         }, 10);
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.querySelector('.modal-content').classList.add('scale-95');
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.classList.remove('flex');
+            // Reset forms, but not the delete modal
+            if (modalId !== 'confirm-delete-modal') {
+                modal.querySelector('form')?.reset();
+            }
+            // Reset job modal title
+            if (modalId === 'add-job-modal') {
+                modal.querySelector('h3').textContent = 'Add a New Job Post';
+                modal.querySelector('button[type="submit"]').textContent = 'Save Job';
+                modal.querySelector('input[name="id"]').value = '';
+            }
+        }, 300);
     }
 
     function logEvent(type, message) {
@@ -1865,6 +592,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderProfiles()
             ]);
             setupEventListeners();
+            initDeleteAndEditHandlers(); // NEW: Initialize edit/delete listeners
             logEvent('SUCCESS', 'Application initialized successfully.');
             showStatus('Ready', 'info'); // Set initial status
         } catch (err) {
@@ -1881,8 +609,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // REMOVED: executeQuery() (replaced by specific DB functions)
 
     // --- Rendering Logic ---
-
-    // ... (unchanged helper functions: toggleJobsView, refreshJobsView, renderLogs, renderStatusTabs, updateActiveTab) ...
 
     // NEW: Function to toggle between Table and Kanban views
     function toggleJobsView(view) {
@@ -1960,8 +686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 3. Get paginated job data
         const jobs = await getPaginatedJobs(status, currentSortOrder, appState.currentPage, appState.itemsPerPage);
 
-        // 4. Render Table Head (Unchanged)
-        // ... (existing code for tableHead.innerHTML) ...
+        // 4. Render Table Head
         const tableHead = jobsTableContainer.querySelector('thead');
         tableHead.innerHTML = `
             <tr>
@@ -1975,7 +700,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 5. Render Table Body
         if (jobs.length === 0) {
-            // ... (existing code for empty table) ...
             const colSpan = appState.columnConfig.filter(c => c.visible).length;
             jobsTableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center py-8 text-muted-foreground">No jobs in this category.</td></tr>`;
             return;
@@ -1994,7 +718,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Create an object from the row data for easy access by key
             const rowData = { id, title, company_name, location, currentStatus, created_at, profile_id, match_percentage, notes, salary, url, description };
 
-            // ... (The rest of the rendering logic is IDENTICAL because rowData object is the same) ...
             return `
                 <tr class="job-row" data-id="${id}">
                     ${appState.columnConfig.map(col => {
@@ -2011,34 +734,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                         break;
                     case 'url':
                         content = `<td class="px-6 py-4 whitespace-nowrap">
-                                    ${rowData.url ? `<a href="${rowData.url}" target="_blank" class="text-primary hover:underline flex items-center"><span class="material-symbols-outlined text-sm mr-1">open_in_new</span>Link</a>` : 'N/A'}
-                                </td>`;
+                                        ${rowData.url ? `<a href="${rowData.url}" target="_blank" class="text-primary hover:underline flex items-center"><span class="material-symbols-outlined text-sm mr-1">open_in_new</span>Link</a>` : 'N/A'}
+                                    </td>`;
                         break;
                     case 'description':
                         content = `<td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" title="${rowData.description || ''}">${(rowData.description || '').substring(0, 30)}${rowData.description && rowData.description.length > 30 ? '...' : ''}</td>`;
                         break;
                     case 'profile_id':
                         content = `<td class="px-6 py-4 whitespace-nowrap">
-                                    <select data-job-id="${id}" class="profile-select editable-select text-sm">
-                                        ${profileOptionsHtml}
-                                    </select>
-                                </td>`;
+                                        <select data-job-id="${id}" class="profile-select editable-select text-sm">
+                                            ${profileOptionsHtml}
+                                        </select>
+                                    </td>`;
                         break;
                     case 'match_percentage':
                         content = `<td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <div class="flex items-center justify-center space-x-2">
-                                        <span>${rowData.match_percentage === null || rowData.match_percentage === undefined ? 'N/A' : `${rowData.match_percentage}%`}</span>
-                                        <button title="Run AI Match Analysis" class="analyze-match-btn text-primary hover:text-accent" data-job-id="${id}" ${!rowData.profile_id ? 'disabled' : ''}>
-                                            <span class="material-symbols-outlined text-lg">biotech</span>
-                                        </button>
-                                    </div>
-                                </td>`;
+                                        <div class="flex items-center justify-center space-x-2">
+                                            <span>${rowData.match_percentage === null || rowData.match_percentage === undefined ? 'N/A' : `${rowData.match_percentage}%`}</span>
+                                            <button title="Run AI Match Analysis" class="analyze-match-btn text-primary hover:text-accent" data-job-id="${id}" ${!rowData.profile_id ? 'disabled' : ''}>
+                                                <span class="material-symbols-outlined text-lg">biotech</span>
+                                            </button>
+                                        </div>
+                                    </td>`;
                         break;
                     case 'status':
                         content = `<td class="px-6 py-4 whitespace-nowrap" data-field="status" data-current-status="${rowData.currentStatus}">${rowData.currentStatus}</td>`;
                         break;
                     case 'notes':
-                        content = `<td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="jobs" title="${rowData.notes || 'Click to add notes'}">${rowData.notes || ''}</td>`;
+                        content = `<td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="jobs" title="${notes || 'Click to add notes'}">${notes || ''}</td>`;
                         break;
                     case 'created_at':
                         content = `<td class="px-6 py-4 whitespace-nowrap" data-field="details">${new Date(rowData.created_at).toLocaleDateString()}</td>`;
@@ -2049,8 +772,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </tr>`;
         }).join('');
     }
-
-    // ... (unchanged helper functions: renderPaginationControls, renderColumnToggles, setupColumnDragAndDrop) ...
 
     // NEW: Render Pagination Controls
     function renderPaginationControls(totalItems, totalPages) {
@@ -2213,7 +934,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // UPDATED: setupDragAndDrop to use new DB functions
     function setupDragAndDrop() {
         let draggedItemId = null;
-        // ... (dragstart, dragend listeners are the same) ...
+        
         document.querySelectorAll('.kanban-card').forEach(card => {
             card.addEventListener('dragstart', e => {
                 draggedItemId = e.target.dataset.id;
@@ -2227,7 +948,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         document.querySelectorAll('.kanban-dropzone').forEach(zone => {
-            // ... (dragover, dragleave listeners are the same) ...
+            
             zone.addEventListener('dragover', e => {
                 e.preventDefault(); // Allow drop
                 zone.classList.add('bg-muted');
@@ -2269,27 +990,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // UPDATED: renderProfiles - now async
+    // REPLACED: renderProfiles with new version (was renderProfilesTable)
     async function renderProfiles() {
-        const tableBody = document.getElementById('profiles-table-body');
-        const profiles = await getAllProfiles();
+        try {
+            const profiles = await getAllProfiles();
+            const tbody = document.getElementById('profiles-table-body');
+            tbody.innerHTML = '';
 
-        if (profiles.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-muted-foreground">No profiles created yet.</td></tr>`;
-            return;
-        }
-        // UPDATED: Loop uses objects
-        tableBody.innerHTML = profiles.map(profile => {
-            const { id, name, created_at, notes } = profile;
-            return `
-                <tr class="hover:bg-muted">
-                    <td class="px-6 py-4 whitespace-nowrap">${name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="profiles" title="${notes || 'Click to add notes'}">${notes || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${new Date(created_at).toLocaleDateString()}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <button class="delete-profile-btn text-destructive hover:opacity-70" data-id="${id}"><span class="material-symbols-outlined">delete</span></button>
+            if (profiles.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-muted-foreground">No profiles found. Add one to get started.</td></tr>';
+                return;
+            }
+
+            profiles.forEach(profile => {
+                const tr = document.createElement('tr');
+                tr.className = 'job-row';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${escapeHTML(profile.name)}</td>
+                    <td data-field="notes" data-id="${profile.id}" data-type="profiles" class="px-6 py-4 whitespace-pre-wrap text-sm cursor-pointer hover:bg-muted" title="${profile.notes || 'Click to add notes'}">${escapeHTML(truncateText(profile.notes, 100))}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">${new Date(profile.created_at).toLocaleDateString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="edit-profile-btn p-1 text-primary hover:text-accent" data-id="${profile.id}" title="Edit Profile">
+                            <span class="material-symbols-outlined">edit</span>
+                        </button>
+                        <button class="delete-profile-btn p-1 text-destructive hover:text-red-700" data-id="${profile.id}" data-name="${escapeHTML(profile.name)}" title="Delete Profile">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
                     </td>
-                </tr>`}).join('');
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Add event listeners for new buttons
+            tbody.querySelectorAll('.edit-profile-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.id);
+                    openEditProfileModal(id);
+                });
+            });
+
+            tbody.querySelectorAll('.delete-profile-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.id);
+                    const name = e.currentTarget.dataset.name;
+                    openDeleteModal(id, 'profile', name);
+                });
+            });
+
+            // Re-attach notes listener
+            tbody.querySelectorAll('td[data-field="notes"]').forEach(cell => {
+                cell.addEventListener('click', (e) => {
+                    openNotesEditor(e.currentTarget);
+                });
+            });
+
+        } catch (error) {
+            console.error("Error rendering profiles table:", error);
+        }
     }
 
     // UPDATED: renderCompaniesGrid - now async
@@ -2331,6 +1088,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // UPDATED: showCompanyDetail - now async
     async function showCompanyDetail(companyId) {
+        currentCompanyDetailId = companyId; // NEW: Set current company ID
         companyGridContainer.classList.add('hidden');
         companyDetailContainer.classList.remove('hidden');
 
@@ -2396,65 +1154,114 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = Object.fromEntries(new FormData(e.target).entries());
         const companyId = parseInt(data.id);
 
-        // 1. Get the old company data
-        const oldCompany = await getCompany(companyId);
+        try {
+            // 1. Get the old company data
+            const oldCompany = await getCompany(companyId);
 
-        // 2. Update the company
-        const updatedCompany = {
-            ...oldCompany, // Preserve any fields not in the form
-            id: companyId,
-            name: data.name,
-            industry: data.industry,
-            location: data.location,
-            website: data.website,
-            linkedin: data.linkedin,
-            notes: data.notes
-        };
-        await updateCompany(updatedCompany);
+            // 2. Update the company
+            const updatedCompany = {
+                ...oldCompany, // Preserve any fields not in the form
+                id: companyId,
+                name: data.name,
+                industry: data.industry,
+                location: data.location,
+                website: data.website,
+                linkedin: data.linkedin,
+                notes: data.notes
+            };
+            await updateCompany(updatedCompany);
 
-        // 3. Update company cache
-        companyMap.set(companyId, data.name);
+            // 3. Update company cache
+            companyMap.set(companyId, data.name);
 
-        logEvent('SUCCESS', `Updated company: ${data.name}`);
-        showStatus('Company updated successfully!', 'success');
+            logEvent('SUCCESS', `Updated company: ${data.name}`);
+            showStatus('Company updated successfully!', 'success');
 
-        // 3. NO MERGE LOGIC NEEDED!
-
-        await renderCompaniesGrid(); // Refresh grid
-        // Refresh related jobs if user is still on the detail page
-        if (!companyDetailContainer.classList.contains('hidden')) {
-            await showCompanyDetail(companyId);
-        }
-        // Refresh job list if visible (to update company name)
-        if (document.getElementById('jobs-view').offsetParent !== null) {
-            await refreshJobsView();
+            // 4. Refresh grid/views
+            await renderCompaniesGrid(); // Refresh grid
+            // Refresh related jobs if user is still on the detail page
+            if (!companyDetailContainer.classList.contains('hidden')) {
+                await showCompanyDetail(companyId);
+            }
+            // Refresh job list if visible (to update company name)
+            if (document.getElementById('jobs-view').offsetParent !== null) {
+                await refreshJobsView();
+            }
+        } catch (err) {
+            logEvent('ERROR', `Failed to update company: ${err.message}`);
+            showStatus('Error updating company. Is the name unique?', 'error');
         }
     }
 
     // REMOVED: openMergeModal, confirmMergeCompany
 
-    // UPDATED: renderPeople - now async
+    // REPLACED: renderPeople with new version (was renderPeopleTable)
     async function renderPeople() {
-        const tableBody = document.getElementById('people-table-body');
-        const people = await getAllPeople();
+        try {
+            const people = await getAllPeople();
+            const tbody = document.getElementById('people-table-body');
+            tbody.innerHTML = '';
 
-        // UPDATED: Loop uses objects
-        tableBody.innerHTML = people.map(person => {
-            const { id, first_name, last_name, job_title, company_name, email, linkedin, notes } = person;
-            return `
-                <tr class="hover:bg-muted">
-                    <td class="px-6 py-4 whitespace-nowrap">${first_name} ${last_name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${job_title || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${company_name || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${email || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap"><a href="${linkedin}" target="_blank" class="text-primary hover:underline">${linkedin || ''}</a></td>
-                    <td class="px-6 py-4 whitespace-nowrap max-w-xs truncate" data-field="notes" data-id="${id}" data-type="people" title="${notes || 'Click to add notes'}">${notes || ''}</td>
-                </tr>`}).join('');
+            if (people.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-muted-foreground">No contacts found.</td></tr>';
+                return;
+            }
+
+            people.forEach(person => {
+                const tr = document.createElement('tr');
+                tr.className = 'job-row';
+                const fullName = `${person.first_name} ${person.last_name}`;
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${escapeHTML(fullName)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${escapeHTML(person.job_title)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${escapeHTML(person.company_name)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${person.email ? `<a href="mailto:${escapeHTML(person.email)}" class="text-primary hover:underline">${escapeHTML(person.email)}</a>` : ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${person.linkedin ? `<a href="${person.linkedin}" target="_blank" class="text-primary hover:underline">View Profile</a>` : ''}</td>
+                    <td data-field="notes" data-id="${person.id}" data-type="people" class="px-6 py-4 whitespace-pre-wrap text-sm cursor-pointer hover:bg-muted" title="${person.notes || 'Click to add notes'}">${escapeHTML(truncateText(person.notes, 100))}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="edit-person-btn p-1 text-primary hover:text-accent" data-id="${person.id}" title="Edit Contact">
+                            <span class="material-symbols-outlined">edit</span>
+                        </button>
+                        <button class="delete-person-btn p-1 text-destructive hover:text-red-700" data-id="${person.id}" data-name="${escapeHTML(fullName)}" title="Delete Contact">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Add event listeners for new buttons
+            tbody.querySelectorAll('.edit-person-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.id);
+                    openEditPersonModal(id);
+                });
+            });
+
+            tbody.querySelectorAll('.delete-person-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.currentTarget.dataset.id);
+                    const name = e.currentTarget.dataset.name;
+                    openDeleteModal(id, 'person', name);
+                });
+            });
+
+            // Re-attach notes listener
+            tbody.querySelectorAll('td[data-field="notes"]').forEach(cell => {
+                cell.addEventListener('click', (e) => {
+                    openNotesEditor(e.currentTarget);
+                });
+            });
+
+        } catch (error) {
+            console.error("Error rendering people table:", error);
+        }
     }
 
     // UPDATED: showJobDetail - now async
     async function showJobDetail(jobId) {
         currentOpenJobId = jobId;
+        currentJobDetailId = jobId; // NEW: Set detail ID
         const job = await getJob(jobId);
 
         if (!job) {
@@ -2469,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('detail-job-title').textContent = title;
         document.getElementById('detail-job-company').textContent = companyName;
-        // ... (rest of the function is the same, using object properties) ...
+        
         document.getElementById('detail-job-description').innerHTML = description ? description.replace(/\n/g, '<br>') : 'No description provided.';
         document.getElementById('detail-job-notes').textContent = notes || 'No notes for this job.';
 
@@ -2500,19 +1307,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Event Handlers ---
     function setupEventListeners() {
-        // ... (navLinks, modal buttons, cancel buttons - unchanged) ...
+        
         navLinks.forEach(link => link.addEventListener('click', (e) => switchView(e.currentTarget.dataset.view)));
-        ['add-job-btn', 'add-profile-btn', 'add-company-btn', 'add-person-btn'].forEach(id => {
-            document.getElementById(id).addEventListener('click', () => openModal(id.replace('-btn', '-modal')));
+        
+        // Modal Open Buttons
+        document.getElementById('add-job-btn').addEventListener('click', () => {
+            // NEW: Reset form for 'add' mode
+            const modal = document.getElementById('add-job-modal');
+            const form = document.getElementById('add-job-form');
+            form.reset();
+            form.querySelector('input[name="id"]').value = ''; // Clear ID field
+            modal.querySelector('h3').textContent = 'Add a New Job Post';
+            modal.querySelector('button[type="submit"]').textContent = 'Save Job';
+            openModal('add-job-modal');
         });
+        document.getElementById('add-profile-btn').addEventListener('click', () => openModal('add-profile-modal'));
+        document.getElementById('add-company-btn').addEventListener('click', () => openModal('add-company-modal'));
+        document.getElementById('add-person-btn').addEventListener('click', () => openModal('add-person-modal'));
+        
+        // Modal Cancel Buttons
         document.querySelectorAll('.cancel-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal').id)));
-
 
         statusTabs.addEventListener('click', e => {
             if (e.target.classList.contains('status-tab')) {
                 currentJobViewStatus = e.target.dataset.status;
                 updateActiveTab();
-                renderJobs(currentJobViewStatus); // This is now async, but event handler can't be
+                renderJobs(currentJobViewStatus); 
             }
         });
 
@@ -2567,7 +1387,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // ... (jobsTableBody dblclick listener - unchanged) ...
         jobsTableBody.addEventListener('dblclick', e => {
             const cell = e.target.closest('td');
             if (cell && cell.dataset.field === 'status') makeStatusEditable(cell);
@@ -2581,9 +1400,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // ... (View Toggle, Pagination listeners - unchanged) ...
+        // NEW: View Toggle Buttons
         showTableViewBtn.addEventListener('click', () => toggleJobsView('table'));
         showKanbanViewBtn.addEventListener('click', () => toggleJobsView('kanban'));
+
+        // NEW: Pagination listeners
         prevPageBtn.addEventListener('click', () => {
             if (appState.currentPage > 1) {
                 appState.currentPage--;
@@ -2600,10 +1421,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderJobs(currentJobViewStatus);
         });
 
-        // ... (Column toggle popover listeners - unchanged) ...
+        // NEW: Column toggle popover listener
         manageColumnsBtn.addEventListener('click', () => {
             manageColumnsPopover.classList.toggle('show');
         });
+        // Close popover if clicking outside
         document.addEventListener('click', (e) => {
             if (!manageColumnsBtn.contains(e.target) && !manageColumnsPopover.contains(e.target)) {
                 manageColumnsPopover.classList.remove('show');
@@ -2611,62 +1433,108 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
 
-        // UPDATED: 'profiles-table-body' click listener
-        document.getElementById('profiles-table-body').addEventListener('click', async e => {
-            const deleteBtn = e.target.closest('.delete-profile-btn');
-            if (deleteBtn && true) { // Bypassed confirm()
-                const profileId = parseInt(deleteBtn.dataset.id);
-                try {
-                    // Cascade "delete": un-link jobs from this profile
-                    const jobsToUpdate = await getJobsByProfileId(profileId);
-                    for (const job of jobsToUpdate) {
-                        job.profile_id = null;
-                        job.match_percentage = null;
-                        job.match_justification = null;
-                        await updateJob(job);
-                    }
+        // REMOVED: Old profiles-table-body delete listener (now handled in renderProfiles)
 
-                    // Delete the profile
-                    await deleteProfile(profileId);
-
-                    logEvent('SUCCESS', `Deleted profile ID ${profileId} and unlinked ${jobsToUpdate.length} jobs.`);
-                    showStatus('Profile deleted.', 'success');
-                    renderProfiles();
-                    refreshJobsView(); // Refresh jobs view in case profile was used
-                } catch (err) {
-                    logEvent('ERROR', `Failed to delete profile: ${err.message}`);
-                    showStatus('Error deleting profile.', 'error');
-                }
-            }
-        });
-
-        // ... (back-to-jobs-list, AI buttons - unchanged) ...
         document.getElementById('back-to-jobs-list').addEventListener('click', () => {
             jobDetailView.classList.add('hidden');
             jobsListView.classList.remove('hidden');
+            currentJobDetailId = null; // NEW: Clear detail ID
             refreshJobsView(); // Use new refresh function
         });
+
         document.getElementById('generate-ai-btn').addEventListener('click', generateAndDisplayFullAnalysis);
         document.getElementById('save-ai-btn').addEventListener('click', handleSaveAnalysis);
 
-        // ... (Form submit listeners - unchanged) ...
-        document.getElementById('add-job-form').addEventListener('submit', handleAddJob);
+        // REPLACED: 'add-job-form' listener with new one
+        document.getElementById('add-job-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            
+            const jobId = formData.get('id') ? parseInt(formData.get('id')) : null;
+            const companyName = formData.get('company_name').trim();
+            
+            try {
+                // Find or create company
+                let company = await getCompanyByName(companyName);
+                let companyId;
+                if (!company && appState.autoCreateCompany) {
+                    const newCompany = { name: companyName, industry: '', location: formData.get('location'), website: '', linkedin: '', notes: '' };
+                    companyId = await addCompany(newCompany);
+                    companyMap.set(companyId, companyName); // Update cache
+                } else if (company) {
+                    companyId = company.id;
+                } else {
+                    showStatus(`Company "${companyName}" not found. Add it from the Companies tab or enable auto-create in settings.`, "error");
+                    return;
+                }
+
+                const jobData = {
+                    title: formData.get('title'),
+                    company_id: companyId, // Use foreign key
+                    location: formData.get('location'),
+                    salary: parseFloat(formData.get('salary')) || null,
+                    url: formData.get('url'),
+                    description: formData.get('description'),
+                    notes: formData.get('notes'),
+                };
+
+                if (jobId) {
+                    // UPDATE existing job
+                    jobData.id = jobId;
+                    // We need to fetch the original job to preserve status, etc.
+                    const originalJob = await getJob(jobId);
+                    jobData.status = originalJob.status;
+                    jobData.created_at = originalJob.created_at;
+                    jobData.profile_id = originalJob.profile_id;
+                    jobData.match_percentage = originalJob.match_percentage;
+                    jobData.match_justification = originalJob.match_justification;
+                    jobData.ai_keywords = originalJob.ai_keywords;
+
+                    await updateJob(jobData);
+                    showStatus(`Job "${jobData.title}" updated successfully.`);
+                    // If the updated job is the one in the detail view, refresh it
+                    if (jobId === currentJobDetailId) {
+                        await showJobDetail(jobId);
+                    }
+                } else {
+                    // ADD new job
+                    jobData.created_at = new Date().toISOString();
+                    jobData.status = 'Bookmarked'; // Default status for new jobs
+                    jobData.match_percentage = null;
+                    jobData.profile_id = null;
+                    jobData.match_justification = null;
+                    jobData.ai_keywords = null;
+                    
+                    await addJob(jobData);
+                    showStatus(`New job "${jobData.title}" added.`);
+                }
+                
+                closeModal('add-job-modal');
+                form.reset();
+                await refreshJobsView();
+            } catch (error) {
+                console.error('Error saving job:', error);
+                showStatus(`Error saving job: ${error.message}`, 'error');
+            }
+        });
+        
         document.getElementById('add-profile-form').addEventListener('submit', handleAddProfile);
         document.getElementById('add-company-form').addEventListener('submit', handleAddCompany);
         document.getElementById('add-person-form').addEventListener('submit', handleAddPerson);
         document.getElementById('edit-notes-form').addEventListener('submit', handleEditNotes);
-
-        // ... (Company view listeners - unchanged) ...
+        
+        // NEW: Company view listeners
         companySearchInput.addEventListener('input', renderCompaniesGrid);
         backToCompanyGridBtn.addEventListener('click', () => {
             companyDetailContainer.classList.add('hidden');
             companyGridContainer.classList.remove('hidden');
+            currentCompanyDetailId = null; // NEW: Clear detail ID
             renderCompaniesGrid(); // Refresh grid in case names changed
         });
         editCompanyForm.addEventListener('submit', handleEditCompany);
 
 
-        // ... ('main' click listener for notes - unchanged) ...
         document.querySelector('main').addEventListener('click', e => {
             const notesCell = e.target.closest('td[data-field="notes"]');
             if (notesCell) {
@@ -2674,7 +1542,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // ... (Settings listeners - unchanged) ...
+        // UPDATED: Settings Listeners
         document.getElementById('llm-api-url').addEventListener('change', saveSettings);
         autoCreateCompanyToggle.addEventListener('change', saveSettings);
         themeSelect.addEventListener('change', () => {
@@ -2686,11 +1554,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('restore-db-input').addEventListener('change', restoreDatabase);
     }
 
-    // ... (openNotesEditor - unchanged) ...
     function openNotesEditor(cell) {
         const id = cell.dataset.id;
         const type = cell.dataset.type;
-        const currentNotes = cell.title.replace('Click to add notes', ''); // Use title to get full notes
+        // Use title to get full notes, fallback to textContent
+        const currentNotes = cell.title.replace('Click to add notes', '') || cell.textContent;
 
         const form = document.getElementById('edit-notes-form');
         form.elements.itemId.value = id;
@@ -2699,7 +1567,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         openModal('edit-notes-modal');
     }
-
 
     // UPDATED: handleEditNotes - now async
     async function handleEditNotes(e) {
@@ -2751,54 +1618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // UPDATED: handleAddJob - now async
-    async function handleAddJob(e) {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target).entries());
-        let companyId;
-
-        try {
-            // NEW: Auto-create company logic with foreign keys
-            if (appState.autoCreateCompany && data.company_name) {
-                let company = await getCompanyByName(data.company_name);
-                if (!company) {
-                    companyId = await addCompany({
-                        name: data.company_name,
-                        industry: null, location: null, website: null, linkedin: null, notes: null
-                    });
-                    companyMap.set(companyId, data.company_name); // Update cache
-                    logEvent('INFO', `Auto-created new company: ${data.company_name}`);
-                } else {
-                    companyId = company.id;
-                }
-            }
-
-            const newJob = {
-                title: data.title,
-                company_id: companyId,
-                location: data.location,
-                salary: data.salary ? parseFloat(data.salary) : null,
-                url: data.url,
-                description: data.description,
-                status: 'Bookmarked',
-                notes: data.notes,
-                created_at: new Date().toISOString(),
-                profile_id: null,
-                match_percentage: null,
-                ai_keywords: null,
-                match_justification: null
-            };
-
-            await addJob(newJob);
-            logEvent('SUCCESS', `Added new job: ${data.title}`);
-            showStatus('Job saved successfully!', 'success');
-            await refreshJobsView();
-            closeModal('add-job-modal');
-        } catch (err) {
-            logEvent('ERROR', `Failed to add job: ${err.message}`);
-            showStatus('Error saving job.', 'error');
-        }
-    }
+    // REMOVED: handleAddJob (now inline in setupEventListeners)
 
     // UPDATED: handleAddProfile - now async
     async function handleAddProfile(e) {
@@ -2920,9 +1740,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ... (applyTheme, saveSettings, loadSettings - unchanged) ...
-    // NOTE: 'auto-backup-db' is no longer used, but we keep settings in localStorage
-
     // NEW: Apply Theme Function
     function applyTheme(themeName) {
         if (themeName === 'Humanist Dark') {
@@ -2994,7 +1811,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Load legacy visibility settings if they exist and convert them
         const legacyColumnVisibility = JSON.parse(localStorage.getItem('jobTrackerColumnVisibility'));
         if (legacyColumnVisibility) {
-            // ... (existing code for legacy settings) ...
             appState.columnConfig.forEach(col => {
                 if (legacyColumnVisibility[col.key] !== undefined) {
                     col.visible = legacyColumnVisibility[col.key];
@@ -3036,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- AI Integration ---
-    // ... (testLLMConnection, callLLM, runKeywordsAnalysis, runMatchAnalysis - unchanged) ...
+    
     async function testLLMConnection() {
         const apiUrl = document.getElementById('llm-api-url')?.value;
         if (!apiUrl) { showStatus('Please enter an API Endpoint URL first.', 'error'); return; }
@@ -3221,7 +2037,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ... (renderKeywords, renderMatchAnalysis - unchanged) ...
     function renderKeywords(data) {
         const panel = document.getElementById('ai-detail-panel');
         panel.innerHTML = '';
@@ -3254,10 +2069,290 @@ document.addEventListener('DOMContentLoaded', async () => {
         panel.innerHTML = `
              <h4 class="font-semibold text-muted-foreground text-sm mb-2">Profile Match Analysis</h4>
              <div class="text-3xl font-bold text-primary">${data.match_percentage}%</div>
-             <p class="text-sm text-card-foreground mt-2">${data.justification}</p>
-            `;
+             <p class="text-sm text-card-foreground mt-2"></p>
+             `;
         // SANITIZE: Use textContent for user-generated content
         panel.querySelector('p').textContent = data.justification;
+    }
+
+
+    // =========================================================================
+    // NEW: EDIT/DELETE FUNCTIONS
+    // =========================================================================
+
+    /**
+     * 1. NEW: MAIN INITIALIZER FOR EDIT/DELETE LISTENERS
+     */
+    function initDeleteAndEditHandlers() {
+
+        // --- Generic Delete Modal Handlers ---
+        const deleteModal = document.getElementById('confirm-delete-modal');
+        document.getElementById('confirm-delete-btn').addEventListener('click', handleDeleteConfirmed);
+
+        // Add listeners to all 'cancel' buttons to close the delete modal
+        deleteModal.querySelectorAll('.cancel-modal-btn').forEach(btn => {
+            btn.addEventListener('click', () => closeDeleteModal());
+        });
+
+        // --- Job Edit/Delete (Detail View) ---
+        document.getElementById('edit-job-detail-btn').addEventListener('click', handleEditJobDetail);
+        document.getElementById('delete-job-detail-btn').addEventListener('click', handleDeleteJobDetail);
+
+        // --- Company Delete (Detail View) ---
+        document.getElementById('delete-company-btn').addEventListener('click', handleDeleteCompanyDetail);
+
+        // --- Profile Edit (Modal) ---
+        document.getElementById('edit-profile-form').addEventListener('submit', handleEditProfileSubmit);
+
+        // --- Person Edit (Modal) ---
+        document.getElementById('edit-person-form').addEventListener('submit', handleEditPersonSubmit);
+    }
+
+    /**
+     * 2. GENERIC DELETE MODAL FUNCTIONS
+     */
+    function openDeleteModal(id, type, name) {
+        const modal = document.getElementById('confirm-delete-modal');
+        document.getElementById('delete-confirmation-text').textContent = `Do you really want to delete "${name}"? This action cannot be undone.`;
+        document.getElementById('delete-item-id').value = id;
+        document.getElementById('delete-item-type').value = type;
+        modal.classList.add('flex');
+        setTimeout(() => modal.style.opacity = '1', 10);
+        setTimeout(() => modal.querySelector('.modal-content').classList.remove('scale-95'), 100);
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('confirm-delete-modal');
+        modal.querySelector('.modal-content').classList.add('scale-95');
+        modal.style.opacity = '0';
+        setTimeout(() => modal.classList.remove('flex'), 300);
+    }
+
+    /**
+     * Handles the final deletion after user confirms.
+     */
+    async function handleDeleteConfirmed() {
+        const id = parseInt(document.getElementById('delete-item-id').value);
+        const type = document.getElementById('delete-item-type').value;
+
+        try {
+            switch (type) {
+                case 'job':
+                    await deleteJob(id);
+                    showStatus(`Job deleted successfully.`);
+                    // If the deleted job was in the detail view, go back to the list
+                    if (id === currentJobDetailId) {
+                        document.getElementById('job-detail-container').classList.add('hidden');
+                        document.getElementById('jobs-list-container').classList.remove('hidden');
+                        currentJobDetailId = null;
+                    }
+                    await refreshJobsView(); 
+                    break;
+                case 'profile':
+                    await deleteProfile(id);
+                    showStatus(`Profile deleted successfully.`);
+                    await renderProfiles();
+                    await refreshJobsView(); // Refresh jobs in case profile was used
+                    break;
+                case 'person':
+                    await deletePerson(id);
+                    showStatus(`Contact deleted successfully.`);
+                    await renderPeople();
+                    break;
+                case 'company':
+                    const companyName = companyMap.get(id) || 'Unknown';
+                    await deleteCompany(id);
+                    companyMap.delete(id); // Remove from cache
+                    showStatus(`Company "${companyName}" deleted.`);
+                    // Go back to company grid
+                    document.getElementById('company-detail-container').classList.add('hidden');
+                    document.getElementById('company-grid-container').classList.remove('hidden');
+                    currentCompanyDetailId = null;
+                    await renderCompaniesGrid();
+                    await refreshJobsView(); // Refresh jobs to show 'Unknown Company'
+                    break;
+            }
+        } catch (error) {
+            console.error(`Error deleting ${type}:`, error);
+            showStatus(`Error deleting item: ${error.message}`, 'error');
+        }
+
+        closeDeleteModal();
+    }
+
+
+    /**
+     * 3. JOB EDIT/DELETE FUNCTIONS
+     */
+    async function handleEditJobDetail() {
+        if (!currentJobDetailId) return;
+
+        const job = await getJob(currentJobDetailId);
+        if (!job) {
+            showStatus('Error: Job not found.', 'error');
+            return;
+        }
+
+        const modal = document.getElementById('add-job-modal');
+        const form = document.getElementById('add-job-form');
+
+        // Populate the form
+        form.querySelector('input[name="id"]').value = job.id;
+        form.querySelector('input[name="title"]').value = job.title;
+        // Get company name from map
+        form.querySelector('input[name="company_name"]').value = companyMap.get(job.company_id) || '';
+        form.querySelector('input[name="location"]').value = job.location || '';
+        form.querySelector('input[name="salary"]').value = job.salary || '';
+        form.querySelector('input[name="url"]').value = job.url || '';
+        form.querySelector('textarea[name="description"]').value = job.description || '';
+        form.querySelector('textarea[name="notes"]').value = job.notes || '';
+
+        // Change modal title and button text
+        modal.querySelector('h3').textContent = 'Edit Job Post';
+        modal.querySelector('button[type="submit"]').textContent = 'Update Job';
+
+        openModal('add-job-modal');
+    }
+
+    function handleDeleteJobDetail() {
+        if (!currentJobDetailId) return;
+        const jobTitle = document.getElementById('detail-job-title').textContent;
+        openDeleteModal(currentJobDetailId, 'job', jobTitle);
+    }
+
+    /**
+     * 4. COMPANY DELETE FUNCTIONS
+     */
+    function handleDeleteCompanyDetail() {
+        if (!currentCompanyDetailId) return;
+        const companyName = document.querySelector('#edit-company-form input[name="name"]').value;
+        openDeleteModal(currentCompanyDetailId, 'company', companyName);
+    }
+
+
+    /**
+     * 5. PROFILES TABLE, EDIT, AND DELETE
+     */
+    async function openEditProfileModal(id) {
+        const profile = await getProfile(id);
+        if (!profile) {
+            showStatus('Error: Profile not found.', 'error');
+            return;
+        }
+
+        const form = document.getElementById('edit-profile-form');
+        form.querySelector('input[name="id"]').value = profile.id;
+        form.querySelector('input[name="name"]').value = profile.name;
+        form.querySelector('textarea[name="content"]').value = profile.content || '';
+        form.querySelector('textarea[name="notes"]').value = profile.notes || '';
+
+        openModal('edit-profile-modal');
+    }
+
+    async function handleEditProfileSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const id = parseInt(formData.get('id'));
+
+        try {
+            // Get original created_at date
+            const originalProfile = await getProfile(id);
+
+            const profileData = {
+                id: id,
+                name: formData.get('name'),
+                content: formData.get('content'),
+                notes: formData.get('notes'),
+                created_at: originalProfile.created_at // Preserve original creation date
+            };
+
+            await updateProfile(profileData);
+            showStatus('Profile updated successfully.');
+            closeModal('edit-profile-modal');
+            await renderProfiles();
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            showStatus(`Error: ${error.message}`, 'error');
+        }
+    }
+
+
+    /**
+     * 6. PEOPLE TABLE, EDIT, AND DELETE
+     */
+    async function openEditPersonModal(id) {
+        const person = await getPerson(id);
+        if (!person) {
+            showStatus('Error: Contact not found.', 'error');
+            return;
+        }
+
+        const form = document.getElementById('edit-person-form');
+        form.querySelector('input[name="id"]').value = person.id;
+        form.querySelector('input[name="first_name"]').value = person.first_name;
+        form.querySelector('input[name="last_name"]').value = person.last_name;
+        form.querySelector('input[name="job_title"]').value = person.job_title || '';
+        form.querySelector('input[name="company_name"]').value = person.company_name || '';
+        form.querySelector('input[name="email"]').value = person.email || '';
+        form.querySelector('input[name="linkedin"]').value = person.linkedin || '';
+        form.querySelector('textarea[name="notes"]').value = person.notes || '';
+
+        openModal('edit-person-modal');
+    }
+
+    async function handleEditPersonSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+
+        const personData = {
+            id: parseInt(formData.get('id')),
+            first_name: formData.get('first_name'),
+            last_name: formData.get('last_name'),
+            job_title: formData.get('job_title'),
+            company_name: formData.get('company_name'),
+            email: formData.get('email'),
+            linkedin: formData.get('linkedin'),
+            notes: formData.get('notes')
+        };
+
+        try {
+            await updatePerson(personData);
+            showStatus('Contact updated successfully.');
+            closeModal('edit-person-modal');
+            await renderPeople();
+        } catch (error) {
+            console.error('Error updating contact:', error);
+            showStatus(`Error: ${error.message}`, 'error');
+        }
+    }
+
+
+    /**
+     * 7. HELPER FUNCTIONS
+     */
+
+    // Helper to escape HTML to prevent XSS
+    function escapeHTML(str) {
+        if (str === null || str === undefined) {
+            return '';
+        }
+        return str.toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Helper to truncate text
+    function truncateText(text, maxLength) {
+        if (!text) return '';
+        if (text.length <= maxLength) {
+            return text;
+        }
+        return text.substr(0, maxLength) + '...';
     }
 
 
